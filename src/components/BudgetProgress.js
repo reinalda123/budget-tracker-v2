@@ -174,7 +174,7 @@ export class BudgetProgress {
     const maskedTotalBudget = maskValue(formatRupiah(totalBudget), isMasked);
 
     this.container.innerHTML = `
-      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 space-y-6 h-full flex-1 flex flex-col justify-between shadow-xs sm:shadow-sm">
+      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 space-y-6 h-auto lg:h-full lg:min-h-[520px] flex-1 flex flex-col justify-start items-stretch shadow-xs sm:shadow-sm">
         
         <!-- Header Komponen -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
@@ -248,12 +248,13 @@ export class BudgetProgress {
         }
 
         <!-- Daftar Pos Anggaran (Categories Progress) -->
-        <div class="space-y-4">
+        <div class="space-y-3.5 w-full flex-1 flex flex-col justify-start items-stretch">
           <div class="flex items-center justify-between text-xs text-slate-400 font-medium px-1">
             <span>POS ANGGARAN</span>
             <span>REALISASI / TARGET PLAFON</span>
           </div>
 
+          <div class="space-y-3 w-full flex flex-col justify-start items-stretch max-h-none overflow-visible lg:max-h-[580px] lg:overflow-y-auto custom-scrollbar lg:pr-1">
           ${
             categories.length === 0
               ? `
@@ -364,6 +365,7 @@ export class BudgetProgress {
                   })
                   .join('')
           }
+          </div>
         </div>
 
       </section>

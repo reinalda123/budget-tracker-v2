@@ -184,12 +184,12 @@ function createHomeTabElement() {
       <!-- Kolom Kiri: Daily Burn Rate + Recent Transactions membentang penuh setinggi kolom kanan (Top-Aligned) -->
       <div class="lg:col-span-7 xl:col-span-8 flex flex-col justify-start items-stretch gap-6">
         <section id="daily-burn-root"></section>
-        <section id="recent-transactions-root" class="flex-1 flex flex-col justify-start items-stretch min-h-[420px]"></section>
+        <section id="recent-transactions-root" class="h-auto lg:h-full lg:flex-1 lg:min-h-[520px] flex flex-col justify-start items-stretch"></section>
       </div>
 
       <!-- Kolom Kanan: Kategori Anggaran membentang penuh setara tinggi kolom kiri -->
-      <div class="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
-        <section id="budget-progress-root" class="flex-1 flex flex-col"></section>
+      <div class="lg:col-span-5 xl:col-span-4 flex flex-col justify-start items-stretch gap-6">
+        <section id="budget-progress-root" class="h-auto lg:h-full lg:flex-1 lg:min-h-[520px] flex flex-col justify-start items-stretch"></section>
       </div>
     </div>
   `;
@@ -222,7 +222,7 @@ function createActivityTabElement() {
   el.className = 'space-y-6 w-full';
   el.innerHTML = `
     <section id="calendar-view-root"></section>
-    <section id="full-transactions-root" class="flex flex-col justify-start items-stretch min-h-[420px]"></section>
+    <section id="full-transactions-root" class="h-auto lg:h-full lg:flex-1 lg:min-h-[520px] flex flex-col justify-start items-stretch"></section>
   `;
   mountCalendarView(el.querySelector('#calendar-view-root'));
   mountTransactionList(el.querySelector('#full-transactions-root'), {

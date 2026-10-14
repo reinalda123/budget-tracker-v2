@@ -161,7 +161,7 @@ export class TransactionList {
     }
 
     this.container.innerHTML = `
-      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 shadow-xs sm:shadow-sm min-h-[420px] h-full flex-1 flex flex-col justify-start items-stretch space-y-4">
+      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 shadow-xs sm:shadow-sm h-auto lg:h-full lg:min-h-[520px] flex-1 flex flex-col justify-start items-stretch space-y-4">
         
         <div class="space-y-4 flex-1 flex flex-col justify-start items-stretch">
           <!-- Header & Bilah Filter Cepat -->
@@ -221,7 +221,7 @@ export class TransactionList {
           </div>
 
           <!-- Daftar Mutasi Transaksi (Top-Aligned Menempel ke Atas) -->
-          <div class="space-y-2.5 flex-1 flex flex-col justify-start items-stretch tx-filter-fade">
+          <div class="space-y-2.5 flex-1 flex flex-col justify-start items-stretch tx-filter-fade max-h-none overflow-visible lg:max-h-[580px] lg:overflow-y-auto custom-scrollbar lg:pr-1">
             ${
               filteredList.length === 0
                 ? `
