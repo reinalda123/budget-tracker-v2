@@ -2,7 +2,7 @@
 import { store, getState, setState, transferBalance, addCategory, updateCategoryBudget, updateWalletName, addAccount, deleteTransaction, triggerImmediateSync } from '../state/store.js';
 import { compressReceiptImage } from '../services/scanner.js';
 import { scanReceiptWithAI } from '../services/api.js';
-import { login, register } from '../services/auth.js';
+import { login } from '../services/auth.js';
 import { formatRupiah } from '../utils/formatters.js';
 import { formatDateIndo } from '../utils/dates.js';
 import { renderIcons } from '../utils/icons.js';
@@ -802,179 +802,106 @@ export function openLoginModal(options = {}) {
   const root = modalRoot();
   if (!root) return;
 
-  let currentMode = options.mode || 'login'; // 'login' | 'register'
-
-  const renderModal = () => {
-    root.innerHTML = `
-      <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
-        <div class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl shadow-2xl border border-[#E4E4E7] dark:border-[#27272A] max-w-sm w-full p-6 space-y-4 my-auto animate-in fade-in zoom-in-95 duration-150">
-          
-          <!-- Header Modal -->
-          <div class="flex items-center justify-between pb-3 border-b border-[#E4E4E7] dark:border-[#27272A]">
-            <div class="flex items-center gap-2.5">
-              <div class="w-9 h-9 rounded-xl bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] flex items-center justify-center font-bold">
-                <i data-lucide="${currentMode === 'login' ? 'log-in' : 'user-plus'}" class="w-4 h-4"></i>
-              </div>
-              <div>
-                <h3 class="text-base font-bold text-[#09090B] dark:text-[#F4F4F5]">
-                  ${currentMode === 'login' ? 'Masuk ke Akun' : 'Daftar Akun Baru'}
-                </h3>
-                <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">
-                  ${currentMode === 'login' ? 'Sinkronkan data dengan Cloudflare D1' : 'Simpan catatan keuangan Anda di cloud'}
-                </p>
-              </div>
+  root.innerHTML = `
+    <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+      <div class="bg-[#121214] rounded-2xl shadow-2xl border border-[#27272A] max-w-sm w-full p-6 sm:p-7 space-y-5 my-auto animate-in fade-in zoom-in-95 duration-150">
+        
+        <!-- Header Modal -->
+        <div class="flex items-start justify-between pb-3 border-b border-[#27272A]">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700/60 text-white flex items-center justify-center font-bold shadow-2xs shrink-0">
+              <i data-lucide="lock" class="w-5 h-5"></i>
             </div>
-            <button id="btn-close-login" type="button" class="p-1.5 text-[#71717A] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition cursor-pointer">
-              <i data-lucide="x" class="w-4 h-4"></i>
-            </button>
-          </div>
-
-          <!-- Tab Switcher -->
-          <div class="flex rounded-xl bg-[#F9F9F8] dark:bg-[#18181B] border border-[#E4E4E7] dark:border-[#27272A] p-1">
-            <button
-              type="button"
-              id="tab-mode-login"
-              class="flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                currentMode === 'login'
-                  ? 'bg-white dark:bg-[#27272A] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs'
-                  : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]'
-              }"
-            >
-              Masuk
-            </button>
-            <button
-              type="button"
-              id="tab-mode-register"
-              class="flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                currentMode === 'register'
-                  ? 'bg-white dark:bg-[#27272A] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs'
-                  : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]'
-              }"
-            >
-              Daftar
-            </button>
-          </div>
-
-          <form id="form-auth" class="space-y-3.5">
-            <div id="auth-error-alert" class="hidden p-3 bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs rounded-xl font-medium"></div>
-            <div id="auth-success-alert" class="hidden p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs rounded-xl font-medium"></div>
-
-            <!-- Field Email -->
             <div>
-              <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Alamat Email</label>
-              <input
-                id="auth_email"
-                type="email"
-                required
-                placeholder="nama@email.com"
-                class="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] bg-[#FFFFFF] dark:bg-[#09090B] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium outline-none transition-all placeholder-zinc-300 dark:placeholder-zinc-600"
-              >
+              <h3 class="text-base font-bold text-white tracking-tight">Masuk Akun</h3>
+              <p class="text-xs text-zinc-400">Akses privat sesi Budget Tracker</p>
             </div>
-
-            <!-- Field Password -->
-            <div>
-              <div class="flex items-center justify-between mb-1.5">
-                <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider">Kata Sandi</label>
-                ${currentMode === 'register' ? '<span class="text-[10px] text-[#71717A] dark:text-[#A1A1AA]">Min. 6 karakter</span>' : ''}
-              </div>
-              <input
-                id="auth_password"
-                type="password"
-                required
-                minlength="6"
-                placeholder="${currentMode === 'register' ? 'Buat kata sandi minimal 6 karakter' : 'Masukkan kata sandi'}"
-                class="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] bg-[#FFFFFF] dark:bg-[#09090B] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium outline-none transition-all placeholder-zinc-300 dark:placeholder-zinc-600"
-              >
-            </div>
-
-            <!-- Tombol Aksi Submit -->
-            <div class="pt-1">
-              <button
-                type="submit"
-                id="btn-auth-submit"
-                class="w-full py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:scale-98 flex items-center justify-center gap-2 shadow-xs"
-              >
-                <span>${currentMode === 'login' ? 'Masuk' : 'Daftar Akun'}</span>
-              </button>
-            </div>
-          </form>
-
+          </div>
+          <button id="btn-close-login" type="button" class="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition cursor-pointer">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
         </div>
+
+        <form id="form-auth" class="space-y-4">
+          <div id="auth-error-alert" class="hidden p-3 bg-rose-950/40 border border-rose-900/60 text-rose-300 text-xs rounded-xl font-medium leading-relaxed"></div>
+
+          <!-- Field Email -->
+          <div>
+            <label class="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Alamat Email</label>
+            <input
+              id="auth_email"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="nama@email.com"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-800 bg-zinc-950 text-white text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-600 transition placeholder-zinc-600"
+            >
+          </div>
+
+          <!-- Field Password -->
+          <div>
+            <label class="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Kata Sandi</label>
+            <input
+              id="auth_password"
+              type="password"
+              required
+              autocomplete="current-password"
+              placeholder="••••••••"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-800 bg-zinc-950 text-white text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-600 transition placeholder-zinc-600"
+            >
+          </div>
+
+          <!-- Tombol Aksi Submit -->
+          <div class="pt-1">
+            <button
+              type="submit"
+              id="btn-auth-submit"
+              class="w-full py-2.5 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 active:scale-98 transition shadow-xs cursor-pointer flex items-center justify-center gap-2"
+            >
+              <i data-lucide="log-in" class="w-4 h-4"></i>
+              <span>Masuk</span>
+            </button>
+          </div>
+        </form>
+
       </div>
-    `;
+    </div>
+  `;
 
-    renderIcons(root);
+  renderIcons(root);
 
-    root.querySelector('#btn-close-login')?.addEventListener('click', closeModal);
-    root.querySelector('#modal-backdrop')?.addEventListener('click', (e) => {
-      if (e.target.id === 'modal-backdrop') closeModal();
-    });
+  root.querySelector('#btn-close-login')?.addEventListener('click', closeModal);
+  root.querySelector('#modal-backdrop')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-backdrop') closeModal();
+  });
 
-    root.querySelector('#tab-mode-login')?.addEventListener('click', () => {
-      if (currentMode !== 'login') {
-        currentMode = 'login';
-        renderModal();
+  const form = root.querySelector('#form-auth');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = root.querySelector('#auth_email').value;
+    const password = root.querySelector('#auth_password').value;
+    const errorAlert = root.querySelector('#auth-error-alert');
+    const submitBtn = root.querySelector('#btn-auth-submit');
+
+    errorAlert.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-75');
+
+    try {
+      await login(email, password);
+      closeModal();
+      triggerImmediateSync();
+      if (typeof options.onSuccess === 'function') {
+        options.onSuccess();
       }
-    });
-
-    root.querySelector('#tab-mode-register')?.addEventListener('click', () => {
-      if (currentMode !== 'register') {
-        currentMode = 'register';
-        renderModal();
-      }
-    });
-
-    const form = root.querySelector('#form-auth');
-    form?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = root.querySelector('#auth_email').value;
-      const password = root.querySelector('#auth_password').value;
-      const errorAlert = root.querySelector('#auth-error-alert');
-      const successAlert = root.querySelector('#auth-success-alert');
-      const submitBtn = root.querySelector('#btn-auth-submit');
-
-      errorAlert.classList.add('hidden');
-      successAlert.classList.add('hidden');
-      submitBtn.disabled = true;
-      submitBtn.classList.add('opacity-75');
-
-      try {
-        if (currentMode === 'register') {
-          await register(email, password);
-          successAlert.textContent = 'Akun berhasil dibuat! Mengalihkan ke sesi masuk...';
-          successAlert.classList.remove('hidden');
-          setTimeout(async () => {
-            try {
-              await login(email, password);
-              closeModal();
-              triggerImmediateSync();
-              if (typeof options.onSuccess === 'function') {
-                options.onSuccess();
-              }
-            } catch (loginErr) {
-              currentMode = 'login';
-              renderModal();
-            }
-          }, 800);
-        } else {
-          await login(email, password);
-          closeModal();
-          triggerImmediateSync();
-          if (typeof options.onSuccess === 'function') {
-            options.onSuccess();
-          }
-        }
-      } catch (err) {
-        errorAlert.textContent = err.message || (currentMode === 'login' ? 'Login gagal, periksa email dan kata sandi.' : 'Registrasi gagal.');
-        errorAlert.classList.remove('hidden');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('opacity-75');
-      }
-    });
-  };
-
-  renderModal();
+    } catch (err) {
+      errorAlert.textContent = err.message || 'Login gagal, periksa email dan kata sandi Anda.';
+      errorAlert.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('opacity-75');
+    }
+  });
 }
 
 /**

@@ -1,9 +1,9 @@
 // src/services/auth.js
 import { store } from '../state/store.js';
-import { loginApi, registerApi } from './api.js';
+import { loginApi } from './api.js';
 
-const SESSION_TOKEN_KEY = 'budget_tracker_jwt_token';
-const SESSION_USER_KEY = 'budget_tracker_user';
+const AUTH_TOKEN_KEY = 'budget_tracker_jwt_token';
+const AUTH_USER_KEY = 'budget_tracker_user';
 
 // Penyimpanan token dan data pengguna dalam memori lokal modul
 let currentToken = null;
@@ -49,12 +49,13 @@ export function isTokenExpired(token) {
 }
 
 /**
- * Memulihkan sesi pengguna dari sessionStorage (misal saat refresh halaman).
+ * Memulihkan sesi pengguna dari localStorage saat website dibuka/refresh.
+ * @returns {boolean}
  */
 export function restoreSession() {
   try {
-    const token = sessionStorage.getItem(SESSION_TOKEN_KEY);
-    const userStr = sessionStorage.getItem(SESSION_USER_KEY);
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    const userStr = localStorage.getItem(AUTH_USER_KEY);
 
     if (token) {
       if (isTokenExpired(token)) {
@@ -65,7 +66,6 @@ export function restoreSession() {
       currentToken = token;
       currentUser = userStr ? JSON.parse(userStr) : null;
 
-      // Sinkronkan ke store aplikasi
       store.setState({
         token: currentToken,
         user: currentUser,
@@ -74,16 +74,19 @@ export function restoreSession() {
       return true;
     }
   } catch (error) {
-    console.warn('[AuthService] Gagal memulihkan sesi dari sessionStorage:', error);
+    console.warn('[AuthService] Gagal memulihkan sesi dari localStorage:', error);
   }
   return false;
 }
 
 /**
- * Memeriksa apakah sesi saat ini aktif dan terautentikasi.
+ * Memeriksa apakah pengguna saat ini terautentikasi dengan token valid di localStorage.
  * @returns {boolean}
  */
 export function isAuthenticated() {
+  if (!currentToken) {
+    restoreSession();
+  }
   if (!currentToken) return false;
 
   if (isTokenExpired(currentToken)) {
@@ -99,6 +102,9 @@ export function isAuthenticated() {
  * @returns {string | null}
  */
 export function getToken() {
+  if (!currentToken) {
+    restoreSession();
+  }
   return currentToken;
 }
 
@@ -107,69 +113,48 @@ export function getToken() {
  * @returns {Object | null}
  */
 export function getUser() {
+  if (!currentUser) {
+    restoreSession();
+  }
   return currentUser ? { ...currentUser } : null;
 }
 
 /**
- * Melakukan proses registrasi akun baru ke backend Worker D1.
+ * Melakukan proses login pengguna ke backend Cloudflare Worker D1.
+ * Menyimpan token JWT ke localStorage dan menyinkronkan state store.
+ * 
  * @param {string} email
  * @param {string} password
- * @returns {Promise<Object>}
- */
-export async function register(email, password) {
-  const cleanEmail = String(email || '').trim().toLowerCase();
-  if (!cleanEmail || !password) {
-    throw new Error('Alamat email dan kata sandi wajib diisi.');
-  }
-  return await registerApi(cleanEmail, password);
-}
-
-/**
- * Melakukan proses login pengguna ke backend Worker D1.
- * Menyimpan token di memori dan sessionStorage serta menyinkronkan store.
- * 
- * @param {string} emailOrUsername - Alamat email pengguna.
- * @param {string} password - Kata sandi pengguna.
  * @returns {Promise<{ success: boolean, user: Object, token: string }>}
  */
-export async function login(emailOrUsername, password) {
-  const cleanInput = String(emailOrUsername || '').trim();
+export async function login(email, password) {
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  const cleanPassword = String(password || '');
 
-  if (!cleanInput || !password) {
+  if (!cleanEmail || !cleanPassword) {
     throw new Error('Email dan kata sandi wajib diisi.');
   }
 
-  let token = null;
-  let userData = null;
+  const res = await loginApi(cleanEmail, cleanPassword);
+  const token = res.token;
+  const userData = {
+    id: res.user?.id || 'usr-default',
+    email: res.user?.email || cleanEmail,
+    name: res.user?.name || cleanEmail.split('@')[0],
+    role: 'user',
+    loggedInAt: new Date().toISOString(),
+  };
 
-  try {
-    // Panggil API Cloudflare Worker POST /api/login
-    const res = await loginApi(cleanInput, password);
-    token = res.token;
-    userData = {
-      id: res.user?.id || 'usr-default',
-      email: res.user?.email || cleanInput,
-      name: res.user?.name || cleanInput.split('@')[0],
-      role: 'user',
-      loggedInAt: new Date().toISOString(),
-    };
-  } catch (apiError) {
-    throw apiError;
-  }
-
-  // Simpan di memori modul
   currentToken = token;
   currentUser = userData;
 
-  // Simpan di sessionStorage
   try {
-    sessionStorage.setItem(SESSION_TOKEN_KEY, token);
-    sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(userData));
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
   } catch (error) {
-    console.warn('[AuthService] Gagal menyimpan ke sessionStorage:', error);
+    console.warn('[AuthService] Gagal menyimpan ke localStorage:', error);
   }
 
-  // Sinkronkan ke state store aplikasi
   store.setState({
     token: currentToken,
     user: currentUser,
@@ -183,20 +168,19 @@ export async function login(emailOrUsername, password) {
 }
 
 /**
- * Menghapus sesi aktif, token di memori & sessionStorage, dan mereset store aplikasi.
+ * Menghapus sesi aktif dan token dari localStorage serta mereset store aplikasi.
  */
 export function logout() {
   currentToken = null;
   currentUser = null;
 
   try {
-    sessionStorage.removeItem(SESSION_TOKEN_KEY);
-    sessionStorage.removeItem(SESSION_USER_KEY);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
   } catch (error) {
-    console.warn('[AuthService] Gagal menghapus sessionStorage:', error);
+    console.warn('[AuthService] Gagal menghapus localStorage:', error);
   }
 
-  // Reset state terpusat
   store.resetState();
 }
 

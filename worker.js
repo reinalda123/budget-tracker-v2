@@ -251,7 +251,6 @@ export default {
           jwtConfigured: Boolean(env.JWT_SECRET),
           gemini: env.GEMINI_API_KEY ? 'Configured' : 'Not Configured',
           endpoints: {
-            register: '/api/register (POST)',
             login: '/api/login (POST)',
             sync: '/api/sync (GET, POST - Protected)',
             scanReceipt: '/api/scan-receipt (POST - Protected)',
@@ -261,66 +260,13 @@ export default {
       }
 
       // ===================================================================
-      // Endpoint POST /api/register: Registrasi Pengguna Baru
+      // Endpoint /api/register: Dinonaktifkan (Single-User Private System)
       // ===================================================================
-      if (pathname === '/api/register' && request.method === 'POST') {
-        if (!env.DB) {
-          return jsonResponse({
-            success: false,
-            error: 'Binding database D1 (DB) tidak ditemukan pada konfigurasi Worker.',
-          }, 500);
-        }
-
-        const body = await request.json().catch(() => ({}));
-        const email = String(body.email || body.username || '').trim().toLowerCase();
-        const password = String(body.password || '');
-
-        // Validasi input
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          return jsonResponse({
-            success: false,
-            error: 'Format email tidak valid. Masukkan alamat email yang benar.',
-          }, 400);
-        }
-
-        if (!password || password.length < 6) {
-          return jsonResponse({
-            success: false,
-            error: 'Kata sandi minimal harus terdiri dari 6 karakter.',
-          }, 400);
-        }
-
-        // Cek apakah email sudah terdaftar di D1
-        const existingUser = await env.DB.prepare(
-          'SELECT id FROM users WHERE email = ?'
-        ).bind(email).first();
-
-        if (existingUser) {
-          return jsonResponse({
-            success: false,
-            error: 'Email sudah terdaftar. Silakan login atau gunakan email lain.',
-          }, 409);
-        }
-
-        // Generate salt & hash password
-        const salt = generateSalt(16);
-        const passwordHash = await hashPassword(password, salt);
-        const userId = 'usr_' + crypto.randomUUID().replace(/-/g, '');
-
-        // Simpan ke tabel users
-        await env.DB.prepare(
-          'INSERT INTO users (id, email, password_hash, salt, created_at) VALUES (?, ?, ?, ?, datetime(\'now\'))'
-        ).bind(userId, email, passwordHash, salt).run();
-
+      if (pathname === '/api/register') {
         return jsonResponse({
-          success: true,
-          message: 'Registrasi berhasil. Silakan masuk dengan akun Anda.',
-          user: {
-            id: userId,
-            email: email,
-            name: email.split('@')[0],
-          },
-        }, 201);
+          success: false,
+          error: 'Pendaftaran akun publik dinonaktifkan. Sistem ini bersifat privat (Single-User). Gunakan skrip CLI untuk menambah user.',
+        }, 403);
       }
 
       // ===================================================================

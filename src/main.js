@@ -26,7 +26,7 @@ import { login, logout, isAuthenticated } from './services/auth.js';
 import { renderIcons } from './utils/icons.js';
 
 /**
- * Data mock awal di memori (tidak di-hardcode ke file store default)
+ * Data mock awal untuk pengguna baru jika database D1 masih kosong
  */
 const mockAccounts = [
   {
@@ -149,100 +149,46 @@ const mockTransactions = [
     type: 'income',
     date: '2026-10-12T09:00:00Z',
   },
-  {
-    id: 'tx-3',
-    note: 'Makan Siang & Artisan Coffee',
-    category: 'Makanan & Kuliner',
-    accountName: 'ShopeePay Plus',
-    amount: 185000,
-    type: 'expense',
-    date: '2026-10-12T12:45:00Z',
-  },
-  {
-    id: 'tx-4',
-    note: 'Isi Saldo E-Money & Tol JORR',
-    category: 'Transportasi & Bensin',
-    accountName: 'BCA Platinum Debit',
-    amount: 200000,
-    type: 'expense',
-    date: '2026-10-11T16:20:00Z',
-  },
-  {
-    id: 'tx-5',
-    note: 'Tagihan Listrik PLN & Internet',
-    category: 'Tagihan & Utilitas',
-    accountName: 'BNI Taplus Bisnis',
-    amount: 650000,
-    type: 'expense',
-    date: '2026-10-10T10:15:00Z',
-  },
-  {
-    id: 'tx-6',
-    note: 'Cashback Promo Pembayaran QRIS',
-    category: 'Bonus & Cashback',
-    accountName: 'DANA Saldo Utama',
-    amount: 150000,
-    type: 'income',
-    date: '2026-10-09T18:00:00Z',
-  },
-  {
-    id: 'tx-7',
-    note: 'Tiket Bioskop Premiere Weekend',
-    category: 'Hiburan & Rekreasi',
-    accountName: 'DANA Saldo Utama',
-    amount: 120000,
-    type: 'expense',
-    date: '2026-10-08T19:30:00Z',
-  },
 ];
 
-// Simulasi user awal jika belum login
-if (!isAuthenticated()) {
-  login('Budi Santoso', 'rahasia123').catch((err) => console.error(err));
-}
+// Wadah elemen DOM utama
+const navbarRoot = document.querySelector('#navbar-root');
+const dashboardRoot = document.querySelector('#dashboard-root');
+const bottomNavRoot = document.querySelector('#bottom-nav-root');
+const fabRoot = document.querySelector('#fab-root');
+const modalRoot = document.querySelector('#modal-root');
 
-// Inisialisasi mock data di memori jika store kosong
-const currentStoreState = getState();
-if (currentStoreState.accounts.length === 0) {
-  setState({ accounts: mockAccounts });
-}
-if (currentStoreState.categories.length === 0) {
-  setState({ categories: mockCategories });
-}
-if (currentStoreState.transactions.length === 0) {
-  setState({ transactions: mockTransactions });
-}
-
-// Inisialisasi Sinkronisasi Cloudflare D1 (Local-First background sync)
-initCloudSync();
+let idleManagerInstance = null;
+let navbarInstance = null;
+let bottomNavInstance = null;
+let storeUnsubscribe = null;
 
 /**
- * Fungsi untuk menampilkan overlay modal Layar Kunci Keamanan Fisik
+ * Overlay Layar Kunci Monokromatik Sleek (Bebas AI Slop)
  */
 function showLockScreenOverlay(reason = 'Manual') {
-  const modalRoot = document.querySelector('#modal-root');
   if (!modalRoot) return;
 
   modalRoot.innerHTML = `
-    <div id="lock-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 transition-opacity animate-in fade-in duration-200">
-      <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-8 max-w-md w-full text-center space-y-6">
-        <div class="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-800 shadow-sm">
-          <i data-lucide="lock" class="w-8 h-8"></i>
+    <div id="lock-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 transition-opacity animate-in fade-in duration-200">
+      <div class="bg-[#121214] rounded-2xl shadow-2xl border border-[#27272A] p-7 max-w-sm w-full text-center space-y-5 animate-in zoom-in-95 duration-150">
+        <div class="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-700/60 text-white flex items-center justify-center mx-auto shadow-2xs">
+          <i data-lucide="lock" class="w-6 h-6"></i>
         </div>
         
         <div>
-          <h3 class="text-xl font-bold text-slate-900 dark:text-white">Sesi Terkunci</h3>
-          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Layar dikunci secara otomatis demi perlindungan privasi finansial Anda (${reason}).
+          <h3 class="text-lg font-bold text-white tracking-tight">Sesi Terkunci</h3>
+          <p class="text-xs text-zinc-400 mt-1">
+            Layar dikunci secara otomatis demi privasi finansial Anda (${reason}).
           </p>
         </div>
 
         <button
           id="btn-unlock-screen"
           type="button"
-          class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md shadow-indigo-200 dark:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+          class="w-full py-2.5 px-4 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 active:scale-98 transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
         >
-          <i data-lucide="unlock" class="w-5 h-5"></i>
+          <i data-lucide="unlock" class="w-4 h-4"></i>
           <span>Buka Kunci Layar</span>
         </button>
       </div>
@@ -255,42 +201,12 @@ function showLockScreenOverlay(reason = 'Manual') {
   if (unlockBtn) {
     unlockBtn.addEventListener('click', () => {
       modalRoot.innerHTML = '';
-      if (idleManager) {
-        idleManager.unlock();
+      if (idleManagerInstance) {
+        idleManagerInstance.unlock();
       }
     });
   }
 }
-
-// Inisialisasi IdleManager (Keamanan fisik inaktivitas & deteksi tab minimize)
-const idleManager = initIdleManager({
-  timeoutMs: 5 * 60 * 1000, // 5 menit
-  lockOnHidden: true,
-  onLock: ({ reason }) => {
-    showLockScreenOverlay(reason === 'visibility_hidden' ? 'Tab diminimalkan/berpindah layar' : 'Inaktivitas 5 menit');
-  },
-});
-
-// Inisialisasi Komponen Navbar (Header Atas)
-const navbarRoot = document.querySelector('#navbar-root');
-if (navbarRoot) {
-  createNavbar({
-    container: navbarRoot,
-    onLock: () => {
-      idleManager.lock('Kunci Manual Pengguna');
-      showLockScreenOverlay('Kunci manual pengguna');
-    },
-    onLoginClick: () => {
-      openLoginModal();
-    },
-    onLogoutClick: () => {
-      logout();
-    },
-  });
-}
-
-// Fungsi Render Konten Utama Dashboard berdasarkan activeTab ('home' | 'wallets' | 'activity' | 'report')
-const dashboardRoot = document.querySelector('#dashboard-root');
 
 /**
  * Merender ringkasan total saldo dan kartu mini KPI Pemasukan/Pengeluaran untuk Tab Beranda
@@ -320,189 +236,142 @@ function renderHomeKpi(container) {
   const maskedExpense = maskValue(formatRupiah(totalExpense), isMasked);
 
   container.innerHTML = `
-    <section class="w-full p-5 sm:p-6 rounded-2xl bg-[#FFFFFF] dark:bg-[#121214] border border-[#E4E4E7] dark:border-[#27272A] text-[#09090B] dark:text-[#F4F4F5] space-y-4 sm:space-y-5 relative shadow-xs sm:shadow-sm">
-      
-      <!-- Baris Total Saldo & Tombol Aksi Cepat -->
-      <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="relative overflow-hidden rounded-2xl bg-[#FFFFFF] dark:bg-[#121214] border border-[#E4E4E7] dark:border-[#27272A] p-6 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span class="text-xs uppercase font-bold text-[#71717A] dark:text-[#A1A1AA] tracking-wider">Total Saldo Terkelola</span>
-          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-0.5 text-[#09090B] dark:text-[#F4F4F5]">${maskedBalance}</h2>
+          <span class="text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider block mb-1">
+            Total Saldo Bersih
+          </span>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-[#09090B] dark:text-[#F4F4F5] tracking-tight">
+            ${maskedBalance}
+          </h2>
+          <p class="text-xs text-[#71717A] dark:text-[#A1A1AA] mt-1.5 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+            <span>Tersinkronisasi otomatis dengan Cloudflare D1</span>
+          </p>
         </div>
-        <div class="flex items-center gap-2 self-start sm:self-auto">
-          <button id="btnQuickAddKpi" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs active:scale-95">
-            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-            <span>Catat Transaksi</span>
-          </button>
-          <button id="btnScanStruk" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 bg-[#F9F9F8] dark:bg-[#09090B] hover:bg-[#E4E4E7] dark:hover:bg-[#27272A] text-[#09090B] dark:text-[#F4F4F5] border border-[#E4E4E7] dark:border-[#27272A] rounded-xl text-xs font-semibold transition cursor-pointer active:scale-95">
-            <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-            <span>Scan AI</span>
-          </button>
-        </div>
-      </div>
 
-      <!-- Kartu Mini KPI: Pemasukan & Pengeluaran Bulan Ini (Soft Sage & Soft Dusty Rose) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-[#E4E4E7] dark:border-[#27272A] relative z-10">
-        <div class="bg-[#F9F9F8] dark:bg-[#09090B] rounded-xl p-3 sm:p-3.5 border border-[#E4E4E7] dark:border-[#27272A] flex items-center justify-between gap-3">
-          <div>
-            <span class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 uppercase tracking-wider">
-              <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> Pemasukan
-            </span>
-            <p class="text-sm sm:text-base font-bold text-emerald-700 dark:text-emerald-400 mt-0.5 truncate">+ ${maskedIncome}</p>
+        <div class="grid grid-cols-2 gap-3 w-full sm:w-auto">
+          <div class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300">
+            <span class="text-[11px] font-semibold block text-emerald-700 dark:text-emerald-400">Pemasukan Bulan Ini</span>
+            <span class="text-base sm:text-lg font-bold">${maskedIncome}</span>
           </div>
-          <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
-            <i data-lucide="trending-up" class="w-4 h-4"></i>
-          </div>
-        </div>
-        <div class="bg-[#F9F9F8] dark:bg-[#09090B] rounded-xl p-3 sm:p-3.5 border border-[#E4E4E7] dark:border-[#27272A] flex items-center justify-between gap-3">
-          <div>
-            <span class="text-[11px] font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-1 uppercase tracking-wider">
-              <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> Pengeluaran
-            </span>
-            <p class="text-sm sm:text-base font-bold text-rose-700 dark:text-rose-400 mt-0.5 truncate">- ${maskedExpense}</p>
-          </div>
-          <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
-            <i data-lucide="trending-down" class="w-4 h-4"></i>
+
+          <div class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-800 dark:text-rose-300">
+            <span class="text-[11px] font-semibold block text-rose-700 dark:text-rose-400">Pengeluaran Bulan Ini</span>
+            <span class="text-base sm:text-lg font-bold">${maskedExpense}</span>
           </div>
         </div>
       </div>
-    </section>
+    </div>
   `;
-
-  renderIcons(container);
-  container.querySelector('#btnScanStruk')?.addEventListener('click', () => {
-    openScanReceiptModal();
-  });
-  container.querySelector('#btnQuickAddKpi')?.addEventListener('click', () => {
-    openTransactionModal();
-  });
 }
 
+/**
+ * Merender konten utama dashboard berdasarkan activeTab ('home' | 'wallets' | 'activity' | 'report')
+ */
 function renderMainContent() {
   if (!dashboardRoot) return;
+  const currentTab = getState().activeTab || 'home';
 
-  const state = getState();
-  const activeTab = state.activeTab || 'home';
-
-  // Bersihkan konten saat tab berubah
   dashboardRoot.innerHTML = '';
 
-  if (activeTab === 'home') {
-    // Tata Letak Grid Responsif Desktop: Seimbang Kiri (lg:col-span-7) & Kanan (lg:col-span-5)
-    // Kolom Kiri: Ringkasan Saldo/KPI, Daily Burn Rate, dan Card Riwayat Transaksi Terbaru
-    // Kolom Kanan: Card Kategori Anggaran / Pos Belanja
-    dashboardRoot.innerHTML = `
-      <div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto items-start">
-        <!-- Kolom Kiri (lg:col-span-7): Ringkasan Keuangan & Riwayat Transaksi -->
-        <div class="lg:col-span-7 space-y-6">
+  switch (currentTab) {
+    case 'home':
+      dashboardRoot.innerHTML = `
+        <div class="space-y-6">
           <section id="home-kpi-root"></section>
-          <section id="daily-burn-rate-root"></section>
-          <section id="transaction-list-root"></section>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div class="lg:col-span-7 xl:col-span-8 space-y-6">
+              <section id="daily-burn-root"></section>
+              <section id="recent-transactions-root"></section>
+            </div>
+
+            <div class="lg:col-span-5 xl:col-span-4 space-y-6">
+              <section id="budget-progress-root"></section>
+            </div>
+          </div>
         </div>
+      `;
 
-        <!-- Kolom Kanan (lg:col-span-5): Pos Anggaran / Budgeting -->
-        <div class="lg:col-span-5 space-y-6">
-          <section id="budget-progress-root"></section>
+      renderHomeKpi(dashboardRoot.querySelector('#home-kpi-root'));
+      mountDailyBurnRate(dashboardRoot.querySelector('#daily-burn-root'));
+      mountBudgetProgress(dashboardRoot.querySelector('#budget-progress-root'));
+      mountTransactionList(dashboardRoot.querySelector('#recent-transactions-root'), {
+        limit: 5,
+        showFilter: false,
+        title: 'Transaksi Terbaru',
+        onViewAll: () => {
+          setActiveTab('activity');
+        },
+      });
+      break;
+
+    case 'wallets':
+      dashboardRoot.innerHTML = `<section id="wallets-view-root" class="space-y-6"></section>`;
+      mountWalletCards(dashboardRoot.querySelector('#wallets-view-root'));
+      break;
+
+    case 'activity':
+      dashboardRoot.innerHTML = `
+        <div class="space-y-6">
+          <section id="calendar-view-root"></section>
+          <section id="full-transactions-root"></section>
         </div>
-      </div>
-    `;
+      `;
+      mountCalendarView(dashboardRoot.querySelector('#calendar-view-root'));
+      mountTransactionList(dashboardRoot.querySelector('#full-transactions-root'), {
+        limit: null,
+        showFilter: true,
+        title: 'Semua Riwayat Transaksi',
+      });
+      break;
 
-    renderHomeKpi(dashboardRoot.querySelector('#home-kpi-root'));
-    mountDailyBurnRate(dashboardRoot.querySelector('#daily-burn-rate-root'));
-    mountTransactionList(dashboardRoot.querySelector('#transaction-list-root'), {
-      limit: 6,
-      showFilter: true,
-      title: 'Transaksi Terbaru',
-      onViewAll: () => {
-        setActiveTab('activity');
-      },
-    });
-    mountBudgetProgress(dashboardRoot.querySelector('#budget-progress-root'), {
-      showBurnRate: false,
-    });
-  } else if (activeTab === 'wallets') {
-    // Tab 2: Dompet -> Kartu mockup dompet/bank bersih tanpa nomor rekening, Transfer & Tambah Rekening
-    dashboardRoot.innerHTML = `
-      <section id="wallet-cards-root" class="max-w-7xl mx-auto w-full"></section>
-    `;
+    case 'report':
+      dashboardRoot.innerHTML = `<section id="report-view-root" class="space-y-6"></section>`;
+      mountReportView(dashboardRoot.querySelector('#report-view-root'));
+      break;
 
-    mountWalletCards(dashboardRoot.querySelector('#wallet-cards-root'));
-  } else if (activeTab === 'activity') {
-    // Tab 3: Aktivitas -> Full monthly grid calendar & Mutasi transaksi seimbang (lg:grid-cols-12)
-    dashboardRoot.innerHTML = `
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start max-w-7xl mx-auto w-full">
-        <section id="calendar-view-root" class="lg:col-span-5"></section>
-        <section id="transaction-list-root" class="lg:col-span-7"></section>
-      </div>
-    `;
-
-    mountCalendarView(dashboardRoot.querySelector('#calendar-view-root'));
-    mountTransactionList(dashboardRoot.querySelector('#transaction-list-root'), {
-      limit: null,
-      showFilter: true,
-      title: 'Riwayat Transaksi',
-    });
-  } else if (activeTab === 'report') {
-    // Tab 4: Laporan -> ReportView dengan Donut chart Chart.js, Arus Kas Bersih (Net cashflow), dan rincian alokasi per kategori
-    dashboardRoot.innerHTML = `
-      <div class="space-y-6 max-w-7xl mx-auto w-full">
-        <section id="calendar-view-root"></section>
-        <section id="report-view-root"></section>
-      </div>
-    `;
-
-    mountCalendarView(dashboardRoot.querySelector('#calendar-view-root'));
-    mountReportView(dashboardRoot.querySelector('#report-view-root'));
+    default:
+      setActiveTab('home');
+      break;
   }
-}
 
-// Helpers untuk mounting komponen modular
-function mountCalendarView(container) {
-  if (!container) return;
-  createCalendarView({
-    container,
-    onMonthChange: (newMonth) => {
-      console.log('Periode bulan diubah ke:', newMonth);
-    },
-  });
+  renderIcons(dashboardRoot);
 }
 
 function mountWalletCards(container) {
   if (!container) return;
   createWalletCards({
     container,
-    onTransferClick: (account) => {
-      openTransferModal(account);
-    },
-    onEditAccount: (account) => {
-      openEditWalletNameModal(account);
-    },
-    onAddAccount: () => {
-      openAddAccountModal();
-    },
-    onSelectAccount: (account) => {
-      console.log('Rekening dipilih:', account);
+    onTransferClick: () => openTransferModal(),
+    onAddAccountClick: () => openAddAccountModal(),
+    onEditWalletClick: (account) => openEditWalletNameModal(account),
+  });
+}
+
+function mountCalendarView(container) {
+  if (!container) return;
+  createCalendarView({
+    container,
+    onSelectDay: (dateStr) => {
+      openTransactionModal({ initialData: { date: dateStr } });
     },
   });
 }
 
 function mountDailyBurnRate(container) {
   if (!container) return;
-  createDailyBurnRate({
-    container,
-  });
+  createDailyBurnRate({ container });
 }
 
-function mountBudgetProgress(container, options = {}) {
+function mountBudgetProgress(container) {
   if (!container) return;
   createBudgetProgress({
     container,
-    showBurnRate: options.showBurnRate !== undefined ? options.showBurnRate : false,
-    onAddCategoryClick: () => {
-      openAddCategoryModal();
-    },
-    onEditCategoryClick: (cat) => {
-      openEditBudgetModal(cat);
-    },
+    onAddCategoryClick: () => openAddCategoryModal(),
+    onEditCategoryClick: (cat) => openEditBudgetModal(cat),
   });
 }
 
@@ -514,70 +383,247 @@ function mountTransactionList(container, options = {}) {
     showFilter: options.showFilter !== undefined ? options.showFilter : true,
     title: options.title || 'Riwayat Transaksi',
     onViewAll: options.onViewAll || (() => {}),
-    onAddTransaction: () => {
-      openTransactionModal();
-    },
+    onAddTransaction: () => openTransactionModal(),
   });
 }
 
 function mountReportView(container) {
   if (!container) return;
-  createReportView({
-    container,
-  });
+  createReportView({ container });
 }
 
-// Inisialisasi awal render tab
-renderMainContent();
+// =============================================================================
+// GERBANG MASUK UTAMA (AUTH GUARD & SINGLE-USER PRIVATE LOGIN SCREEN)
+// =============================================================================
 
-// Langganan perubahan activeTab atau state perubahan data untuk Beranda KPI
-let prevActiveTab = getState().activeTab;
-subscribe((state) => {
-  const currentTab = state.activeTab;
-  if (currentTab !== prevActiveTab) {
-    prevActiveTab = currentTab;
-    renderMainContent();
-  } else if (currentTab === 'home') {
-    // Re-render banner KPI jika state berubah saat di tab beranda
-    const kpiRoot = dashboardRoot?.querySelector('#home-kpi-root');
-    if (kpiRoot) {
-      renderHomeKpi(kpiRoot);
-    }
+/**
+ * Menampilkan Layar Login Utama jika pengguna belum login.
+ * Seluruh komponen dashboard, navbar, FAB, dan navigasi bawah dinonaktifkan total.
+ */
+function renderPrivateLoginGate() {
+  // Bersihkan komponen navbar, navigasi bawah, FAB, dan modal
+  if (navbarRoot) navbarRoot.innerHTML = '';
+  if (bottomNavRoot) bottomNavRoot.innerHTML = '';
+  if (fabRoot) fabRoot.innerHTML = '';
+  if (modalRoot) modalRoot.innerHTML = '';
+
+  if (idleManagerInstance) {
+    idleManagerInstance.stop();
   }
-});
 
-// Tombol Scan AI melayang khusus mobile (hanya tampil di HP pada pojok kanan bawah)
-const fabRoot = document.querySelector('#fab-root');
-if (fabRoot) {
-  fabRoot.innerHTML = `
-    <button
-      id="btn-scan-struk-mobile"
-      type="button"
-      title="Pindai Struk dengan AI"
-      class="fixed bottom-24 right-4 z-40 md:hidden flex items-center gap-2 bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] border border-[#E4E4E7] dark:border-[#27272A] px-4 py-2.5 rounded-full shadow-md cursor-pointer transition active:scale-95"
-    >
-      <i data-lucide="camera" class="w-4 h-4"></i>
-      <span>Scan AI</span>
-    </button>
+  if (storeUnsubscribe) {
+    storeUnsubscribe();
+    storeUnsubscribe = null;
+  }
+
+  if (!dashboardRoot) return;
+
+  // Render Layar Login Monokromatik Sleek Dark Mode (Tanpa opsi register, bebas AI slop)
+  dashboardRoot.innerHTML = `
+    <div class="min-h-[82vh] flex items-center justify-center p-4">
+      <div class="w-full max-w-sm mx-auto p-6 sm:p-8 rounded-2xl bg-[#121214] border border-[#27272A] shadow-2xl space-y-6 animate-in fade-in zoom-in-95 duration-200 text-left">
+        
+        <!-- Header Brand Minimalis Monokrom -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700/60 text-white flex items-center justify-center font-bold shadow-2xs shrink-0">
+            <i data-lucide="lock" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold text-white tracking-tight">Budget Tracker</h1>
+            <p class="text-xs text-zinc-400">Single-User Private Access</p>
+          </div>
+        </div>
+
+        <!-- Pesan Error Dinamis -->
+        <div id="login-gate-error" class="hidden p-3 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 text-xs font-medium leading-relaxed"></div>
+
+        <!-- Form Login Privat (HANYA Email & Password) -->
+        <form id="form-private-login" class="space-y-4">
+          <div>
+            <label class="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Alamat Email</label>
+            <input
+              id="gate_email"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="nama@email.com"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-800 bg-zinc-950 text-white text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-600 transition placeholder-zinc-600"
+            >
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Kata Sandi</label>
+            <input
+              id="gate_password"
+              type="password"
+              required
+              autocomplete="current-password"
+              placeholder="••••••••"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-800 bg-zinc-950 text-white text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-600 transition placeholder-zinc-600"
+            >
+          </div>
+
+          <button
+            type="submit"
+            id="btn-gate-submit"
+            class="w-full py-2.5 mt-2 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 active:scale-98 transition shadow-xs cursor-pointer flex items-center justify-center gap-2"
+          >
+            <i data-lucide="log-in" class="w-4 h-4"></i>
+            <span>Masuk</span>
+          </button>
+        </form>
+
+        <!-- Footer Keamanan Monokrom -->
+        <div class="pt-4 border-t border-zinc-800/80 flex items-center justify-center gap-2 text-[11px] text-zinc-400">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-zinc-300"></i>
+          <span>Sesi Privat Terenkripsi Cloudflare D1</span>
+        </div>
+
+      </div>
+    </div>
   `;
 
-  renderIcons(fabRoot);
+  renderIcons(dashboardRoot);
 
-  fabRoot.querySelector('#btn-scan-struk-mobile')?.addEventListener('click', () => {
-    openScanReceiptModal();
+  const form = dashboardRoot.querySelector('#form-private-login');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const emailInput = dashboardRoot.querySelector('#gate_email');
+    const passwordInput = dashboardRoot.querySelector('#gate_password');
+    const errorAlert = dashboardRoot.querySelector('#login-gate-error');
+    const submitBtn = dashboardRoot.querySelector('#btn-gate-submit');
+
+    const email = emailInput?.value || '';
+    const password = passwordInput?.value || '';
+
+    errorAlert.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-75');
+
+    try {
+      await login(email, password);
+      // Login sukses! Muat dashboard aplikasi penuh
+      initApp();
+    } catch (err) {
+      errorAlert.textContent = err.message || 'Login gagal. Periksa kembali email dan kata sandi Anda.';
+      errorAlert.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('opacity-75');
+    }
   });
 }
 
-// Inisialisasi Bottom Navigation Bar
-const bottomNavRoot = document.querySelector('#bottom-nav-root');
-if (bottomNavRoot) {
-  createBottomNav({
-    container: bottomNavRoot,
-    onQuickAdd: () => {
-      openTransactionModal();
+/**
+ * Memuat aplikasi penuh setelah terautentikasi (Dashboard, Header, Navigasi, Sync, Idle Manager)
+ */
+function mountAuthenticatedDashboard() {
+  // Inisialisasi mock data di memori jika pengguna baru belum memiliki data
+  const currentStoreState = getState();
+  if (currentStoreState.accounts.length === 0) {
+    setState({ accounts: mockAccounts });
+  }
+  if (currentStoreState.categories.length === 0) {
+    setState({ categories: mockCategories });
+  }
+  if (currentStoreState.transactions.length === 0) {
+    setState({ transactions: mockTransactions });
+  }
+
+  // 1. Inisialisasi Header Navbar Atas
+  if (navbarRoot) {
+    navbarInstance = createNavbar({
+      container: navbarRoot,
+      onLock: () => {
+        if (idleManagerInstance) {
+          idleManagerInstance.lock('Kunci Manual Pengguna');
+        }
+        showLockScreenOverlay('Kunci manual pengguna');
+      },
+      onLoginClick: () => {
+        openLoginModal();
+      },
+      onLogoutClick: () => {
+        logout();
+        initApp(); // Kembali ke Gerbang Login Privat
+      },
+    });
+  }
+
+  // 2. Render Konten Utama Dashboard
+  renderMainContent();
+
+  // 3. Langganan perubahan activeTab atau state perubahan data
+  let prevActiveTab = getState().activeTab;
+  storeUnsubscribe = subscribe((state) => {
+    const currentTab = state.activeTab;
+    if (currentTab !== prevActiveTab) {
+      prevActiveTab = currentTab;
+      renderMainContent();
+    } else if (currentTab === 'home') {
+      const kpiRoot = dashboardRoot?.querySelector('#home-kpi-root');
+      if (kpiRoot) {
+        renderHomeKpi(kpiRoot);
+      }
+    }
+  });
+
+  // 4. Inisialisasi Tombol Scan AI melayang khusus mobile
+  if (fabRoot) {
+    fabRoot.innerHTML = `
+      <button
+        id="btn-scan-struk-mobile"
+        type="button"
+        title="Pindai Struk dengan AI"
+        class="fixed bottom-24 right-4 z-40 md:hidden flex items-center gap-2 bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] border border-[#E4E4E7] dark:border-[#27272A] px-4 py-2.5 rounded-full shadow-md cursor-pointer transition active:scale-95"
+      >
+        <i data-lucide="camera" class="w-4 h-4"></i>
+        <span>Scan AI</span>
+      </button>
+    `;
+    renderIcons(fabRoot);
+
+    fabRoot.querySelector('#btn-scan-struk-mobile')?.addEventListener('click', () => {
+      openScanReceiptModal();
+    });
+  }
+
+  // 5. Inisialisasi Bottom Navigation Bar
+  if (bottomNavRoot) {
+    bottomNavInstance = createBottomNav({
+      container: bottomNavRoot,
+      onQuickAdd: () => {
+        openTransactionModal();
+      },
+    });
+  }
+
+  // 6. Inisialisasi IdleManager (Keamanan fisik inaktivitas & deteksi tab minimize)
+  idleManagerInstance = initIdleManager({
+    timeoutMs: 5 * 60 * 1000, // 5 menit
+    lockOnHidden: true,
+    onLock: ({ reason }) => {
+      showLockScreenOverlay(reason === 'visibility_hidden' ? 'Tab diminimalkan/berpindah layar' : 'Inaktivitas 5 menit');
     },
   });
+
+  // 7. Inisialisasi Sinkronisasi Cloudflare D1 (Local-First background sync)
+  initCloudSync();
+
+  // 8. Inisialisasi Deteksi & Panduan Install PWA khusus Safari di iOS
+  initIosInstallPrompt({ delay: 1500 });
 }
 
-// Inisialisasi Deteksi & Panduan Install PWA khusus Safari di iOS
-initIosInstallPrompt({ delay: 1500 });
+/**
+ * Titik Masuk Utama Aplikasi: Menjalankan Pemeriksaan Autentikasi KETAT
+ */
+function initApp() {
+  if (!isAuthenticated()) {
+    renderPrivateLoginGate();
+  } else {
+    mountAuthenticatedDashboard();
+  }
+}
+
+// Jalankan aplikasi
+initApp();

@@ -15,3 +15,4 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 -- 2. Tambahkan kolom user_id pada tabel transactions
 ALTER TABLE transactions ADD COLUMN user_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id);
+

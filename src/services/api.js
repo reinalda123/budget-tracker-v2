@@ -9,35 +9,12 @@ const API_BASE_URL = 'https://budget-tracker-worker.reinaldazahara.workers.dev';
  */
 function getAuthHeader() {
   try {
-    const token = sessionStorage.getItem('budget_tracker_jwt_token');
+    const token = localStorage.getItem('budget_tracker_jwt_token');
     if (token) {
       return { 'Authorization': `Bearer ${token}` };
     }
   } catch (e) {}
   return {};
-}
-
-/**
- * Registrasi akun pengguna baru ke Cloudflare Worker D1 (POST /api/register)
- * @param {string} email
- * @param {string} password
- * @returns {Promise<Object>}
- */
-export async function registerApi(email, password) {
-  const res = await fetch(`${API_BASE_URL}/api/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify({ email, password }),
-  });
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data?.success) {
-    throw new Error(data?.error || `Registrasi gagal (${res.status} ${res.statusText})`);
-  }
-  return data;
 }
 
 /**

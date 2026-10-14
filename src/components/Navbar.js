@@ -186,7 +186,7 @@ export class Navbar {
                 id="btn-lock-session"
                 type="button"
                 title="Kunci sesi manual (Keamanan Fisik)"
-                class="p-2 sm:px-3 sm:py-2 rounded-lg text-[#09090B] dark:text-[#F4F4F5] bg-[#F9F9F8] dark:bg-[#121214] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 dark:hover:bg-rose-950/50 dark:hover:text-rose-300 border border-[#E4E4E7] dark:border-[#27272A] text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 cursor-pointer"
+                class="p-2 sm:px-3 sm:py-2 rounded-lg text-[#09090B] dark:text-[#F4F4F5] bg-[#F9F9F8] dark:bg-[#121214] hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-black dark:hover:text-white border border-[#E4E4E7] dark:border-[#27272A] text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <i data-lucide="lock" class="w-4 h-4 shrink-0"></i>
                 <span class="hidden sm:inline">Kunci</span>
@@ -213,7 +213,7 @@ export class Navbar {
                     id="btn-navbar-logout"
                     type="button"
                     title="Keluar dari sesi"
-                    class="p-2 rounded-lg text-[#71717A] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                    class="p-2 rounded-lg text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                   >
                     <i data-lucide="log-out" class="w-4 h-4"></i>
                   </button>
