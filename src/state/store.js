@@ -3,79 +3,18 @@ import { fetchCloudData, pushCloudData } from '../services/api.js';
 
 const UI_PREF_KEY = 'budget_tracker_is_masked';
 const THEME_PREF_KEY = 'theme';
-const LOCAL_CACHE_KEY = 'budget_tracker_local_cache';
 
-/**
- * Mendapatkan kunci localStorage cache yang terisolasi per user jika user telah login.
- * @param {string} [userId]
- * @returns {string}
- */
-function getCacheKey(userId) {
-  if (userId) return `${LOCAL_CACHE_KEY}_${userId}`;
+// Bersihkan seluruh cache data finansial lama dari localStorage (Murni Full Cloud D1)
+if (typeof localStorage !== 'undefined') {
   try {
-    const userStr = localStorage.getItem('budget_tracker_user');
-    if (userStr) {
-      const u = JSON.parse(userStr);
-      if (u?.id) return `${LOCAL_CACHE_KEY}_${u.id}`;
+    localStorage.removeItem('budget_tracker_local_cache');
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('budget_tracker_local_cache') || key.startsWith('budget_tracker_cache'))) {
+        localStorage.removeItem(key);
+      }
     }
-  } catch {}
-  return LOCAL_CACHE_KEY;
-}
-
-/**
- * Membaca data tersimpan (accounts, categories, transactions) dari cache localStorage.
- * @param {string} [userId]
- * @returns {{ accounts: Array|null, categories: Array|null, transactions: Array|null }}
- */
-function getInitialLocalData(userId) {
-  try {
-    const key = getCacheKey(userId);
-    let saved = localStorage.getItem(key);
-    if (!saved && key !== LOCAL_CACHE_KEY) {
-      saved = localStorage.getItem(LOCAL_CACHE_KEY);
-    }
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const isMockTx = (t) => t && (t.id === 'tx-1' || t.id === 'tx-2');
-      const isMockAcc = (a) => a && (a.id === 'acc-bca' || a.id === 'acc-mandiri' || a.id === 'acc-bni' || a.id === 'acc-dana' || a.id === 'acc-shopeepay' || a.id === 'acc-cash');
-      const isMockCat = (c) => c && (c.id === 'cat-1' || c.id === 'cat-2' || c.id === 'cat-3' || c.id === 'cat-4' || c.id === 'cat-5' || c.id === 'cat-6');
-
-      const accounts = Array.isArray(parsed.accounts) ? parsed.accounts.filter((a) => !isMockAcc(a)) : null;
-      const categories = Array.isArray(parsed.categories) ? parsed.categories.filter((c) => !isMockCat(c)) : null;
-      const transactions = Array.isArray(parsed.transactions) ? parsed.transactions.filter((t) => !isMockTx(t)) : null;
-
-      return {
-        accounts: accounts && accounts.length > 0 ? accounts : null,
-        categories: categories && categories.length > 0 ? categories : null,
-        transactions: transactions && transactions.length > 0 ? transactions : null,
-      };
-    }
-  } catch (err) {
-    console.warn('Gagal membaca cache lokal dari localStorage:', err);
-  }
-  return { accounts: null, categories: null, transactions: null };
-}
-
-/**
- * Menyimpan data accounts, categories, dan transactions ke cache localStorage secara langsung.
- * Menyimpan ke cache spesifik pengguna jika tersedia untuk isolasi data maksimal.
- * @param {Object} state
- */
-function saveLocalCache(state) {
-  try {
-    const payload = {
-      accounts: state.accounts || [],
-      categories: state.categories || [],
-      transactions: state.transactions || [],
-    };
-    const userSpecificKey = getCacheKey(state.user?.id);
-    localStorage.setItem(userSpecificKey, JSON.stringify(payload));
-    if (userSpecificKey !== LOCAL_CACHE_KEY) {
-      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(payload));
-    }
-  } catch (err) {
-    console.warn('Gagal menyimpan cache lokal ke localStorage:', err);
-  }
+  } catch (e) {}
 }
 
 /**
@@ -106,7 +45,6 @@ function getInitialThemePreference() {
 
 const defaultMonth = new Date().toISOString().slice(0, 7);
 const initialTheme = getInitialThemePreference();
-const initialCache = getInitialLocalData();
 
 /**
  * Menerapkan tema gelap / terang ke elemen document HTML
@@ -126,18 +64,19 @@ export function applyTheme(theme) {
 applyTheme(initialTheme);
 
 /**
- * Initial state awal aplikasi dengan dukungan Local-First cache.
+ * Initial state awal aplikasi murni in-memory (Full Cloud D1 Single Source of Truth).
+ * Seluruh data finansial (accounts, categories, transactions) hidup di memori sementara.
  */
 const initialDefaultState = {
-  accounts: initialCache.accounts || [],
-  categories: initialCache.categories || [],
-  transactions: initialCache.transactions || [],
+  accounts: [],
+  categories: [],
+  transactions: [],
   selectedMonth: defaultMonth,
   selectedDate: null,
   isMasked: getInitialMaskedPreference(),
   theme: initialTheme,
   activeTab: 'home', // 'home' | 'wallets' | 'activity' | 'report'
-  syncStatus: 'online', // 'online' | 'syncing' | 'error' | 'connecting'
+  syncStatus: 'connecting', // 'online' | 'syncing' | 'error' | 'connecting'
   user: null,
   token: null,
 };
@@ -163,15 +102,24 @@ export function getState() {
 }
 
 /**
- * Menjadwalkan background push sync ke Cloudflare Worker D1 dengan debouncing 1 detik (1000ms).
- * @param {number} [delayMs=1000]
+ * Menjadwalkan background push sync ke Cloudflare Worker D1 saat terjadi mutasi data lokal.
+ * @param {number} [delayMs=300]
  */
-export function scheduleCloudSync(delayMs = 1000) {
+export function scheduleCloudSync(delayMs = 300) {
   if (syncTimer) {
     clearTimeout(syncTimer);
   }
-  syncTimer = setTimeout(() => {
-    triggerImmediateSync();
+  syncTimer = setTimeout(async () => {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('budget_tracker_jwt_token') : null;
+    if (!token) return;
+
+    try {
+      await pushCloudData(currentState);
+      setState({ syncStatus: 'online' });
+    } catch (err) {
+      console.warn('[Sync] Gagal push perubahan ke Cloudflare D1:', err);
+      setState({ syncStatus: 'error' });
+    }
   }, delayMs);
 }
 
@@ -183,8 +131,9 @@ export function resetCloudSyncFlag() {
 }
 
 /**
- * Memicu sinkronisasi langsung (immediate sync) ke Cloudflare Worker D1.
- * Dapat dipanggil manual lewat klik tombol status di Navbar atau otomatis saat reconnect / initial load.
+ * Mengambil data terbaru dari Cloudflare D1 (Single Source of Truth).
+ * Selalu melakukan TIMPA TOTAL (STATE OVERWRITE) state in-memory dengan data terbaru dari D1.
+ * JANGAN melakukan merge dengan data lama agar item yang dihapus di device lain langsung hilang (Cegah Zombie Data).
  */
 export async function triggerImmediateSync() {
   if (syncTimer) {
@@ -214,75 +163,59 @@ export async function triggerImmediateSync() {
   setState({ syncStatus: 'syncing' });
 
   try {
-    // Jika belum pernah berhasil mengambil data cloud untuk sesi ini, coba pull data terlebih dahulu
-    if (!hasPulledFromCloud) {
-      const cloudData = await fetchCloudData();
-      const hasWallets = Array.isArray(cloudData.wallets) && cloudData.wallets.length > 0;
-      const hasTransactions = Array.isArray(cloudData.transactions) && cloudData.transactions.length > 0;
-      const hasBudgets = Array.isArray(cloudData.budgets) && cloudData.budgets.length > 0;
+    const cloudData = await fetchCloudData();
 
-      if (hasWallets || hasTransactions || hasBudgets) {
-        const mappedAccounts = (cloudData.wallets || []).map((w) => ({
-          id: w.id,
-          name: w.name,
-          balance: Number(w.balance) || 0,
-          type: 'bank',
-          provider: w.name,
-          theme: w.color || 'default',
-        }));
+    const mappedAccounts = (cloudData.wallets || []).map((w) => ({
+      id: String(w.id),
+      name: w.name,
+      balance: Number(w.balance) || 0,
+      type: 'bank',
+      provider: w.name,
+      theme: w.color || 'default',
+    }));
 
-        const mappedTransactions = (cloudData.transactions || []).map((t) => ({
-          id: t.id,
-          wallet_id: t.wallet_id,
-          amount: Number(t.amount) || 0,
-          type: t.type,
-          category: t.category,
-          note: t.note || '',
-          date: t.date,
-        }));
+    const mappedTransactions = (cloudData.transactions || []).map((t) => ({
+      id: String(t.id),
+      wallet_id: String(t.wallet_id),
+      accountId: String(t.wallet_id),
+      amount: Number(t.amount) || 0,
+      type: t.type,
+      category: t.category,
+      note: t.note || '',
+      date: t.date,
+    }));
 
-        const mappedCategories = (cloudData.budgets || []).map((b) => ({
-          id: b.id,
-          name: b.category,
-          budget: Number(b.allocated) || 0,
-          spent: 0,
-          icon: 'wallet',
-        }));
+    const mappedCategories = (cloudData.budgets || []).map((b) => ({
+      id: String(b.id),
+      name: b.category,
+      budget: Number(b.allocated) || 0,
+      spent: 0,
+      icon: 'wallet',
+    }));
 
-        const updates = {};
-        if (mappedAccounts.length > 0) updates.accounts = mappedAccounts;
-        if (mappedTransactions.length > 0) updates.transactions = mappedTransactions;
-        if (mappedCategories.length > 0) updates.categories = mappedCategories;
+    // TIMPA TOTAL (STATE OVERWRITE) - CEGAH ZOMBIE DATA
+    // Seluruh data transaksi, kartu, dan pos anggaran WAJIB hidup di memori sementara
+    // yang datanya selalu diambil langsung dari endpoint Cloudflare Worker.
+    currentState = {
+      ...currentState,
+      accounts: mappedAccounts,
+      transactions: mappedTransactions,
+      categories: mappedCategories,
+      syncStatus: 'online',
+    };
 
-        currentState = {
-          ...currentState,
-          ...updates,
-          syncStatus: 'online',
-        };
-        saveLocalCache(currentState);
+    hasPulledFromCloud = true;
 
-        subscribers.forEach((listener) => {
-          try {
-            listener(currentState);
-          } catch (e) {
-            console.error(e);
-          }
-        });
-      } else {
-        // Jika database D1 cloud masih kosong, push data lokal awal milik user ini ke D1
-        if (currentState.accounts.length > 0 || currentState.transactions.length > 0) {
-          await pushCloudData(currentState);
-        }
+    // Beritahu seluruh komponen/subscriber tampilan secara reaktif
+    subscribers.forEach((listener) => {
+      try {
+        listener(currentState);
+      } catch (e) {
+        console.error(e);
       }
-      hasPulledFromCloud = true;
-      setState({ syncStatus: 'online' });
-    } else {
-      // Push perubahan data lokal ke Cloudflare D1
-      await pushCloudData(currentState);
-      setState({ syncStatus: 'online' });
-    }
+    });
   } catch (err) {
-    console.warn('[Sync] Gagal menyinkronkan data ke Cloudflare D1:', err);
+    console.warn('[Sync] Gagal memuat data dari Cloudflare D1:', err);
     setState({ syncStatus: 'error' });
   } finally {
     isSyncing = false;
@@ -294,27 +227,47 @@ export async function triggerImmediateSync() {
 }
 
 /**
- * Menginisialisasi listener online/offline dan memicu sinkronisasi awal saat aplikasi dibuka.
+ * Menginisialisasi listener online/offline, auto-fetch on window focus, dan auto-fetch on visibilitychange.
  */
 let isSyncInitialized = false;
 export async function initCloudSync() {
   if (isSyncInitialized) return;
   isSyncInitialized = true;
 
-  // Pasang event listener deteksi jaringan browser
   if (typeof window !== 'undefined') {
+    // 1. Deteksi koneksi internet kembali online
     window.addEventListener('online', () => {
-      console.log('[Sync] Koneksi internet online. Melakukan auto-sync...');
+      console.log('[Sync] Koneksi internet online. Mengambil data segar dari Cloudflare D1...');
       triggerImmediateSync();
     });
 
     window.addEventListener('offline', () => {
-      console.warn('[Sync] Koneksi offline. Mengubah status ke error...');
+      console.warn('[Sync] Koneksi offline. Menandai status error...');
       setState({ syncStatus: 'error' });
+    });
+
+    // 2. Auto-fetch saat window/tab kembali aktif / mendapatkan fokus (Window Focus)
+    window.addEventListener('focus', () => {
+      const token = typeof localStorage !== 'undefined' ? localStorage.getItem('budget_tracker_jwt_token') : null;
+      if (token) {
+        console.log('[Sync] Window/tab aktif kembali (focus). Auto-fetch dari Cloudflare D1...');
+        triggerImmediateSync();
+      }
+    });
+
+    // 3. Auto-fetch saat visibilitas halaman berubah menjadi 'visible' (Tab beralih atau aplikasi HP dibuka kembali)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        const token = typeof localStorage !== 'undefined' ? localStorage.getItem('budget_tracker_jwt_token') : null;
+        if (token) {
+          console.log('[Sync] Layar aktif kembali (visibilityState=visible). Auto-fetch dari Cloudflare D1...');
+          triggerImmediateSync();
+        }
+      }
     });
   }
 
-  // Jalankan sinkronisasi awal hanya jika ada token
+  // Jalankan fetch awal hanya jika ada token
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('budget_tracker_jwt_token') : null;
   if (token) {
     triggerImmediateSync();
@@ -342,26 +295,17 @@ export function setState(updater) {
 
   if (userChanged) {
     hasPulledFromCloud = false;
-    // Jika login pengguna baru, muat cache milik pengguna tersebut
-    if (updates.user?.id) {
-      const userCache = getInitialLocalData(updates.user.id);
-      if (userCache.accounts || userCache.transactions || userCache.categories) {
-        currentState.accounts = userCache.accounts || [];
-        currentState.transactions = userCache.transactions || [];
-        currentState.categories = userCache.categories || [];
-      } else {
-        // Pengguna baru tanpa cache lokal: mulai dengan state bersih untuk isolasi penuh
-        currentState.accounts = [];
-        currentState.transactions = [];
-        currentState.categories = [];
-      }
-    }
+    // Bersihkan seluruh data finansial in-memory saat logout atau login akun baru
+    currentState.accounts = [];
+    currentState.transactions = [];
+    currentState.categories = [];
+
     if (updates.token) {
       triggerImmediateSync();
     }
   }
 
-  // Simpan ke localStorage & jadwalkan background sync jika ada mutasi data akun, kategori, atau transaksi
+  // Jadwalkan cloud push jika ada mutasi data akun, kategori, atau transaksi (Tidak menyimpan ke localStorage)
   const hasDataMutation =
     updates &&
     (updates.accounts !== undefined ||
@@ -369,11 +313,10 @@ export function setState(updater) {
       updates.transactions !== undefined);
 
   if (hasDataMutation) {
-    saveLocalCache(currentState);
     scheduleCloudSync(300);
   }
 
-  // Simpan preferensi UI jika isMasked diperbarui
+  // Simpan preferensi UI jika isMasked diperbarui (localStorage hanya untuk preferensi UI)
   if (updates && updates.isMasked !== undefined) {
     try {
       localStorage.setItem(UI_PREF_KEY, JSON.stringify(currentState.isMasked));
@@ -382,7 +325,7 @@ export function setState(updater) {
     }
   }
 
-  // Simpan preferensi Tema jika tema diperbarui
+  // Simpan preferensi Tema jika tema diperbarui (localStorage hanya untuk preferensi UI)
   if (updates && updates.theme !== undefined) {
     try {
       localStorage.setItem(THEME_PREF_KEY, currentState.theme);

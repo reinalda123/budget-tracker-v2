@@ -841,6 +841,84 @@ export default {
       }
 
       // ===================================================================
+      // Endpoint GET /api/transactions: Ambil Transaksi (Protected & Scoped)
+      // ===================================================================
+      if (pathname === '/api/transactions' && request.method === 'GET') {
+        const authUser = await authenticateRequest(request, env);
+        if (!authUser) {
+          return jsonResponse({
+            success: false,
+            error: 'Akses ditolak. Sesi tidak valid atau telah kadaluwarsa. Silakan login terlebih dahulu.',
+          }, 401);
+        }
+
+        if (!env.DB) {
+          return jsonResponse({ success: true, data: [] }, 200);
+        }
+
+        const res = await env.DB.prepare(
+          'SELECT id, user_id, wallet_id, amount, type, category, note, date, created_at FROM transactions WHERE user_id = ? ORDER BY date DESC'
+        ).bind(authUser.userId).all();
+
+        return jsonResponse({
+          success: true,
+          data: res?.results || [],
+        }, 200);
+      }
+
+      // ===================================================================
+      // Endpoint GET /api/wallets & GET /api/cards: Ambil Rekening (Protected & Scoped)
+      // ===================================================================
+      if ((pathname === '/api/wallets' || pathname === '/api/cards') && request.method === 'GET') {
+        const authUser = await authenticateRequest(request, env);
+        if (!authUser) {
+          return jsonResponse({
+            success: false,
+            error: 'Akses ditolak. Sesi tidak valid atau telah kadaluwarsa. Silakan login terlebih dahulu.',
+          }, 401);
+        }
+
+        if (!env.DB) {
+          return jsonResponse({ success: true, data: [] }, 200);
+        }
+
+        const res = await env.DB.prepare(
+          'SELECT id, user_id, name, balance, color, created_at, updated_at FROM wallets WHERE user_id = ? ORDER BY created_at ASC'
+        ).bind(authUser.userId).all();
+
+        return jsonResponse({
+          success: true,
+          data: res?.results || [],
+        }, 200);
+      }
+
+      // ===================================================================
+      // Endpoint GET /api/budgets: Ambil Pos Anggaran (Protected & Scoped)
+      // ===================================================================
+      if (pathname === '/api/budgets' && request.method === 'GET') {
+        const authUser = await authenticateRequest(request, env);
+        if (!authUser) {
+          return jsonResponse({
+            success: false,
+            error: 'Akses ditolak. Sesi tidak valid atau telah kadaluwarsa. Silakan login terlebih dahulu.',
+          }, 401);
+        }
+
+        if (!env.DB) {
+          return jsonResponse({ success: true, data: [] }, 200);
+        }
+
+        const res = await env.DB.prepare(
+          'SELECT id, user_id, category, allocated, month_year FROM budgets WHERE user_id = ? ORDER BY month_year DESC'
+        ).bind(authUser.userId).all();
+
+        return jsonResponse({
+          success: true,
+          data: res?.results || [],
+        }, 200);
+      }
+
+      // ===================================================================
       // Endpoint GET /api/sync: Ambil Data (Protected & Strictly User-Scoped)
       // Mencegah kebocoran data antar user: hanya mengembalikan data milik authUser.userId
       // ===================================================================

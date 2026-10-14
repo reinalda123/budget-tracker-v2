@@ -83,6 +83,96 @@ export function formatStateToCloudPayload(state = {}) {
 }
 
 /**
+ * Mengambil daftar transaksi pengguna langsung dari Cloudflare D1 (GET /api/transactions)
+ * @returns {Promise<Array>}
+ */
+export async function fetchTransactionsApi() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/transactions`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || `Gagal mengambil data transaksi (${res.status})`);
+    }
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+/**
+ * Mengambil daftar kartu rekening/dompet pengguna langsung dari Cloudflare D1 (GET /api/wallets)
+ * @returns {Promise<Array>}
+ */
+export async function fetchWalletsApi() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/wallets`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || `Gagal mengambil data kartu rekening (${res.status})`);
+    }
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+/**
+ * Mengambil daftar pos anggaran pengguna langsung dari Cloudflare D1 (GET /api/budgets)
+ * @returns {Promise<Array>}
+ */
+export async function fetchBudgetsApi() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/budgets`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || `Gagal mengambil data pos anggaran (${res.status})`);
+    }
+    const json = await res.json();
+    return json.data || [];
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+/**
  * Mengambil seluruh data dari Cloudflare Worker D1 (GET /api/sync)
  * @returns {Promise<{ wallets: Array, transactions: Array, budgets: Array }>}
  */
