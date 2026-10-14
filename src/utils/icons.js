@@ -60,6 +60,7 @@ import {
   SquarePlus,
   Smartphone,
   Compass,
+  UserPlus,
 } from 'lucide';
 
 /**
@@ -125,6 +126,7 @@ const registeredIcons = {
   SquarePlus,
   Smartphone,
   Compass,
+  UserPlus,
 };
 
 /**

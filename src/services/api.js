@@ -4,6 +4,66 @@
 const API_BASE_URL = 'https://budget-tracker-worker.reinaldazahara.workers.dev';
 
 /**
+ * Mendapatkan header Authorization Bearer dari token sesi aktif
+ * @returns {Record<string, string>}
+ */
+function getAuthHeader() {
+  try {
+    const token = sessionStorage.getItem('budget_tracker_jwt_token');
+    if (token) {
+      return { 'Authorization': `Bearer ${token}` };
+    }
+  } catch (e) {}
+  return {};
+}
+
+/**
+ * Registrasi akun pengguna baru ke Cloudflare Worker D1 (POST /api/register)
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<Object>}
+ */
+export async function registerApi(email, password) {
+  const res = await fetch(`${API_BASE_URL}/api/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.success) {
+    throw new Error(data?.error || `Registrasi gagal (${res.status} ${res.statusText})`);
+  }
+  return data;
+}
+
+/**
+ * Login pengguna dan mendapatkan token JWT dari Cloudflare Worker D1 (POST /api/login)
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<{ success: boolean, token: string, user: Object }>}
+ */
+export async function loginApi(email, password) {
+  const res = await fetch(`${API_BASE_URL}/api/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.success) {
+    throw new Error(data?.error || `Login gagal (${res.status} ${res.statusText})`);
+  }
+  return data;
+}
+
+/**
  * Mengubah struktur state lokal frontend ke skema tabel Cloudflare D1
  * @param {Object} state - State aplikasi (accounts, transactions, categories)
  * @returns {{ wallets: Array, transactions: Array, budgets: Array }}
@@ -58,6 +118,7 @@ export async function fetchCloudData() {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
+        ...getAuthHeader(),
       },
       signal: controller.signal,
     });
@@ -65,7 +126,8 @@ export async function fetchCloudData() {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      throw new Error(`Gagal mengambil data cloud (${res.status} ${res.statusText})`);
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal mengambil data cloud (${res.status} ${res.statusText})`);
     }
 
     const result = await res.json();
@@ -99,6 +161,7 @@ export async function pushCloudData(stateOrPayload) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        ...getAuthHeader(),
       },
       body: JSON.stringify(payload),
       signal: controller.signal,
@@ -107,7 +170,8 @@ export async function pushCloudData(stateOrPayload) {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      throw new Error(`Gagal menyimpan ke cloud (${res.status} ${res.statusText})`);
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal menyimpan ke cloud (${res.status} ${res.statusText})`);
     }
 
     const result = await res.json();
@@ -129,7 +193,6 @@ export async function pushCloudData(stateOrPayload) {
  * @returns {Promise<{ merchant: string, amount: number, date: string, category: string, notes: string }>}
  */
 export async function scanReceiptWithAI(base64Image, mimeType = 'image/jpeg') {
-  // Bersihkan prefix data URL seperti "data:image/jpeg;base64," jika ada
   let cleanBase64 = base64Image || '';
   if (cleanBase64.includes(',')) {
     cleanBase64 = cleanBase64.split(',')[1];
@@ -149,6 +212,7 @@ export async function scanReceiptWithAI(base64Image, mimeType = 'image/jpeg') {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        ...getAuthHeader(),
       },
       body: JSON.stringify({
         image: cleanBase64,
@@ -197,6 +261,7 @@ export async function deleteTransactionApi(id) {
       method: 'DELETE',
       headers: {
         'Accept': 'application/json',
+        ...getAuthHeader(),
       },
       signal: controller.signal,
     });
@@ -216,6 +281,3 @@ export async function deleteTransactionApi(id) {
     throw error;
   }
 }
-
-
-

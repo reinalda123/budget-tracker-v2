@@ -1,5 +1,6 @@
 // src/services/auth.js
 import { store } from '../state/store.js';
+import { loginApi, registerApi } from './api.js';
 
 const SESSION_TOKEN_KEY = 'budget_tracker_jwt_token';
 const SESSION_USER_KEY = 'budget_tracker_user';
@@ -110,45 +111,57 @@ export function getUser() {
 }
 
 /**
- * Melakukan proses login pengguna.
+ * Melakukan proses registrasi akun baru ke backend Worker D1.
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<Object>}
+ */
+export async function register(email, password) {
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  if (!cleanEmail || !password) {
+    throw new Error('Alamat email dan kata sandi wajib diisi.');
+  }
+  return await registerApi(cleanEmail, password);
+}
+
+/**
+ * Melakukan proses login pengguna ke backend Worker D1.
  * Menyimpan token di memori dan sessionStorage serta menyinkronkan store.
  * 
- * @param {string} username - Nama pengguna / email.
+ * @param {string} emailOrUsername - Alamat email pengguna.
  * @param {string} password - Kata sandi pengguna.
  * @returns {Promise<{ success: boolean, user: Object, token: string }>}
  */
-export async function login(username, password) {
-  const cleanUsername = String(username || '').trim();
+export async function login(emailOrUsername, password) {
+  const cleanInput = String(emailOrUsername || '').trim();
 
-  if (!cleanUsername || !password) {
-    throw new Error('Username dan kata sandi wajib diisi.');
+  if (!cleanInput || !password) {
+    throw new Error('Email dan kata sandi wajib diisi.');
   }
 
-  // Simulasi pembuatan token JWT berstandar (Header.Payload.Signature)
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const expTime = Math.floor(Date.now() / 1000) + 3600 * 8; // Berlaku 8 jam
-  const payload = btoa(
-    JSON.stringify({
-      sub: cleanUsername,
-      name: cleanUsername,
-      exp: expTime,
-      iat: Math.floor(Date.now() / 1000),
-    })
-  );
-  const signature = btoa('mock_signature_budget_tracker');
-  const token = `${header}.${payload}.${signature}`;
+  let token = null;
+  let userData = null;
 
-  const userData = {
-    username: cleanUsername,
-    role: 'user',
-    loggedInAt: new Date().toISOString(),
-  };
+  try {
+    // Panggil API Cloudflare Worker POST /api/login
+    const res = await loginApi(cleanInput, password);
+    token = res.token;
+    userData = {
+      id: res.user?.id || 'usr-default',
+      email: res.user?.email || cleanInput,
+      name: res.user?.name || cleanInput.split('@')[0],
+      role: 'user',
+      loggedInAt: new Date().toISOString(),
+    };
+  } catch (apiError) {
+    throw apiError;
+  }
 
   // Simpan di memori modul
   currentToken = token;
   currentUser = userData;
 
-  // Simpan di sessionStorage (aman dari tab silang & otomatis hilang saat tab ditutup)
+  // Simpan di sessionStorage
   try {
     sessionStorage.setItem(SESSION_TOKEN_KEY, token);
     sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(userData));
@@ -189,4 +202,3 @@ export function logout() {
 
 // Inisialisasi awal pemulihan sesi saat modul dimuat
 restoreSession();
-
