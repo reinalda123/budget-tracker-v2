@@ -1,0 +1,9 @@
+name = "budget-tracker-worker"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Binding Database Cloudflare D1
+[[d1_databases]]
+binding = "DB"
+database_name = "budget-tracker-db"
+database_id = "b5c8e2c0-0500-4504-9fa1-dbd97b37253a"    

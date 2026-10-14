@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Budget Tracker - Manajemen Finansial Cerdas</title>
+
+    <!-- Konfigurasi iOS PWA (Apple Mobile Web App) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Budget Tracker" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <!-- Script inline tema untuk mencegah flash light/dark mode saat reload -->
+    <script>
+      (function() {
+        try {
+          const theme = localStorage.getItem('theme');
+          if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <!-- Pustaka html2pdf.js CDN untuk Ekspor Laporan PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  </head>
+  <body class="bg-[#F9F9F8] dark:bg-[#09090B] text-[#09090B] dark:text-[#F4F4F5] antialiased min-h-screen transition-colors duration-300 ease-in-out">
+    <div id="app" class="min-h-screen w-full bg-[#F9F9F8] dark:bg-[#09090B] text-[#09090B] dark:text-[#F4F4F5] flex flex-col transition-colors duration-300 ease-in-out">
+      <!-- Wadah Header Navigasi -->
+      <header id="navbar-root" class="w-full"></header>
+
+      <!-- Wadah Konten Dashboard Dinamis berdasarkan activeTab -->
+      <main id="dashboard-root" class="w-full flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28"></main>
+
+      <!-- Wadah Floating Action Button (FAB) -->
+      <aside id="fab-root"></aside>
+
+      <!-- Wadah Bottom Navigation Bar -->
+      <footer id="bottom-nav-root" class="w-full"></footer>
+
+      <!-- Wadah Modal / Layar Kunci Keamanan -->
+      <div id="modal-root"></div>
+
+      <!-- Wadah Modal Panduan Install PWA iOS (Safari) -->
+      <div id="ios-pwa-prompt-root"></div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

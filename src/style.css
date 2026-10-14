@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg-page: #F9F9F8;
+  --bg-card: #FFFFFF;
+  --border-card: #E4E4E7;
+  --text-main: #09090B;
+  --text-muted: #71717A;
+}
+
+.dark {
+  --bg-page: #09090B;
+  --bg-card: #121214;
+  --border-card: #27272A;
+  --text-main: #F4F4F5;
+  --text-muted: #A1A1AA;
+}
+
+body {
+  background-color: #F9F9F8;
+  color: #09090B;
+}
+
+.dark body {
+  background-color: #09090B;
+  color: #F4F4F5;
+}
+
+html, body, div, nav, header, button, input {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Hilangkan panah spinner atas-bawah pada seluruh input number */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
