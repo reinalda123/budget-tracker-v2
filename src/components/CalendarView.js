@@ -5,6 +5,7 @@ import { renderIcons } from '../utils/icons.js';
 /**
  * Komponen CalendarView: Kalender bulanan interaktif dalam format grid (Minggu - Sabtu)
  * dengan indikator titik transaksi dan pemilihan tanggal mutasi.
+ * Menggunakan selektor tanggal aktif berbasis pill animasi halus tanpa unmount / re-render grid.
  */
 export class CalendarView {
   /**
@@ -22,10 +23,36 @@ export class CalendarView {
     this.onMonthChange = options.onMonthChange || (() => {});
     this.onDateSelect = options.onDateSelect || (() => {});
 
-    // Langganan pembaruan state store
-    this.unsubscribe = subscribe(() => this.render());
+    this.renderedMonth = null;
+    this.renderedSelectedDate = null;
+    this.renderedTxCount = null;
+    this.renderedTxIds = null;
 
+    // Render struktur awal
     this.render();
+
+    // Langganan pembaruan state store
+    this.unsubscribe = subscribe(() => {
+      const state = getState();
+      const currentMonth = state.selectedMonth || new Date().toISOString().slice(0, 7);
+      const txs = state.transactions || [];
+      const txCount = txs.length;
+      const txIds = txs.map((t) => `${t.id}:${t.amount}:${t.date}`).join(',');
+
+      // Re-render struktur tabel hanya jika bulan berubah atau mutasi data transaksi berubah
+      if (currentMonth !== this.renderedMonth || txCount !== this.renderedTxCount || txIds !== this.renderedTxIds) {
+        this.render();
+      } else if (state.selectedDate !== this.renderedSelectedDate) {
+        // HANYA tanggal aktif yang berubah: gerakkan pill selektor tanpa flicker / unmount kalender
+        this.updateSelectedDate(state.selectedDate);
+      }
+    });
+
+    // Resize listener agar selektor pill tetap presisi saat window berubah ukuran
+    this.handleResize = () => {
+      this.positionPill(this.renderedSelectedDate, true);
+    };
+    window.addEventListener('resize', this.handleResize);
   }
 
   /**
@@ -58,7 +85,118 @@ export class CalendarView {
   }
 
   /**
-   * Menghubungkan event listener.
+   * Menempatkan posisi pill selektor hitam pada sel tanggal aktif.
+   * @param {string | null} dateStr
+   * @param {boolean} [immediate=false]
+   */
+  positionPill(dateStr, immediate = false) {
+    const pill = this.container.querySelector('#calendar-active-pill');
+    if (!pill) return;
+
+    if (!dateStr) {
+      pill.style.opacity = '0';
+      return;
+    }
+
+    const targetCell = this.container.querySelector(`[data-calendar-date="${dateStr}"]`);
+    if (!targetCell) {
+      pill.style.opacity = '0';
+      return;
+    }
+
+    const left = targetCell.offsetLeft;
+    const top = targetCell.offsetTop;
+    const width = targetCell.offsetWidth;
+    const height = targetCell.offsetHeight;
+
+    if (width === 0 || height === 0) {
+      requestAnimationFrame(() => this.positionPill(dateStr, immediate));
+      return;
+    }
+
+    if (immediate) {
+      pill.style.transition = 'none';
+      pill.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+      pill.style.width = `${width}px`;
+      pill.style.height = `${height}px`;
+      pill.style.opacity = '1';
+      void pill.offsetHeight;
+      pill.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1), width 200ms ease, height 200ms ease, opacity 180ms ease';
+    } else {
+      pill.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1), width 200ms ease, height 200ms ease, opacity 180ms ease';
+      pill.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+      pill.style.width = `${width}px`;
+      pill.style.height = `${height}px`;
+      pill.style.opacity = '1';
+    }
+  }
+
+  /**
+   * Memperbarui visual tanggal aktif secara parsial tanpa menyentuh DOM grid kalender.
+   * @param {string | null} newDate
+   * @param {boolean} [immediate=false]
+   */
+  updateSelectedDate(newDate, immediate = false) {
+    this.renderedSelectedDate = newDate;
+
+    // Gerakkan selektor pill hitam halus
+    this.positionPill(newDate, immediate);
+
+    // Perbarui kontras angka tanggal dan titik indikator transaksi
+    const cells = this.container.querySelectorAll('[data-calendar-date]');
+    cells.forEach((cell) => {
+      const isTarget = cell.getAttribute('data-calendar-date') === newDate;
+      const numEl = cell.querySelector('.day-num');
+      const dotExpense = cell.querySelector('.dot-expense');
+      const dotIncome = cell.querySelector('.dot-income');
+
+      if (isTarget) {
+        if (numEl) {
+          numEl.className = 'day-num text-xs sm:text-sm leading-none font-extrabold text-white dark:text-[#09090B]';
+        }
+        if (dotExpense) dotExpense.className = 'dot-expense w-1.5 h-1.5 rounded-full bg-rose-200';
+        if (dotIncome) dotIncome.className = 'dot-income w-1.5 h-1.5 rounded-full bg-emerald-200';
+      } else {
+        if (numEl) {
+          numEl.className = 'day-num text-xs sm:text-sm leading-none font-medium text-[#09090B] dark:text-[#F4F4F5]';
+        }
+        if (dotExpense) dotExpense.className = 'dot-expense w-1.5 h-1.5 rounded-full bg-rose-500';
+        if (dotIncome) dotIncome.className = 'dot-income w-1.5 h-1.5 rounded-full bg-emerald-500';
+      }
+    });
+
+    // Perbarui banner indikator filter tanggal
+    const banner = this.container.querySelector('#calendar-filter-banner');
+    if (banner) {
+      if (newDate) {
+        banner.classList.remove('hidden');
+        banner.innerHTML = `
+          <span class="text-[#09090B] dark:text-[#F4F4F5] font-semibold flex items-center gap-1.5">
+            <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+            Menampilkan mutasi tanggal: <strong>${newDate}</strong>
+          </span>
+          <button
+            id="btn-clear-date-filter"
+            type="button"
+            class="text-[#09090B] dark:text-[#F4F4F5] hover:underline font-bold cursor-pointer"
+          >
+            Tampilkan Semua Bulan Ini
+          </button>
+        `;
+        renderIcons(banner);
+        banner.querySelector('#btn-clear-date-filter')?.addEventListener('click', () => {
+          setSelectedDate(null);
+          this.onDateSelect(null);
+        });
+      } else {
+        banner.classList.add('hidden');
+        banner.innerHTML = '';
+      }
+    }
+  }
+
+  /**
+   * Menghubungkan event listener tombol navigasi dan klik sel kalender.
    */
   attachEvents() {
     // Tombol Navigasi Bulan
@@ -72,13 +210,12 @@ export class CalendarView {
       this.onDateSelect(null);
     });
 
-    // Klik pada Tanggal di Grid Kalender
+    // Klik pada Tanggal di Grid Kalender (Hanya toggle state tanggal)
     const dateCells = this.container.querySelectorAll('[data-calendar-date]');
     dateCells.forEach((cell) => {
       cell.addEventListener('click', () => {
         const clickedDate = cell.getAttribute('data-calendar-date');
         const state = getState();
-        // Toggle tanggal jika sudah aktif
         const newSelectedDate = state.selectedDate === clickedDate ? null : clickedDate;
         setSelectedDate(newSelectedDate);
         this.onDateSelect(newSelectedDate);
@@ -94,6 +231,11 @@ export class CalendarView {
     const currentSelected = state.selectedMonth || new Date().toISOString().slice(0, 7);
     const selectedDate = state.selectedDate;
     const transactions = Array.isArray(state.transactions) ? state.transactions : [];
+
+    this.renderedMonth = currentSelected;
+    this.renderedSelectedDate = selectedDate;
+    this.renderedTxCount = transactions.length;
+    this.renderedTxIds = transactions.map((t) => `${t.id}:${t.amount}:${t.date}`).join(',');
 
     const [year, month] = currentSelected.split('-').map(Number);
     const firstDayIndex = new Date(year, month - 1, 1).getDay(); // 0 = Minggu
@@ -126,7 +268,7 @@ export class CalendarView {
     const weekDays = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
     this.container.innerHTML = `
-      <section class="bg-[#FFFFFF] dark:bg-[#121214] border border-[#E4E4E7] dark:border-[#27272A] rounded-2xl p-4 sm:p-6 space-y-4">
+      <section class="bg-[#FFFFFF] dark:bg-[#121214] border border-[#E4E4E7] dark:border-[#27272A] rounded-2xl p-4 sm:p-6 space-y-4 shadow-xs sm:shadow-sm">
         
         <!-- Header Selector Periode Bulan -->
         <div class="flex items-center justify-between pb-2 border-b border-[#E4E4E7] dark:border-[#27272A]">
@@ -181,10 +323,10 @@ export class CalendarView {
         </div>
 
         <!-- Filter Status Tanggal Terpilih -->
-        ${
-          selectedDate
-            ? `
-          <div class="flex items-center justify-between px-3 py-2 bg-[#F9F9F8] dark:bg-[#09090B] border border-[#E4E4E7] dark:border-[#27272A] rounded-xl text-xs">
+        <div id="calendar-filter-banner" class="${selectedDate ? '' : 'hidden'} flex items-center justify-between px-3 py-2 bg-[#F9F9F8] dark:bg-[#09090B] border border-[#E4E4E7] dark:border-[#27272A] rounded-xl text-xs">
+          ${
+            selectedDate
+              ? `
             <span class="text-[#09090B] dark:text-[#F4F4F5] font-semibold flex items-center gap-1.5">
               <i data-lucide="filter" class="w-3.5 h-3.5"></i>
               Menampilkan mutasi tanggal: <strong>${selectedDate}</strong>
@@ -196,20 +338,27 @@ export class CalendarView {
             >
               Tampilkan Semua Bulan Ini
             </button>
-          </div>
-        `
-            : ''
-        }
+          `
+              : ''
+          }
+        </div>
 
-        <!-- Grid Kalender (Minggu - Sabtu) dengan Transisi Halus -->
-        <div class="space-y-2 calendar-grid-enter">
+        <!-- Grid Kalender (Minggu - Sabtu) Tanpa Flickering -->
+        <div class="space-y-2">
           <!-- Nama Hari -->
           <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-[#71717A] dark:text-[#A1A1AA] py-1">
             ${weekDays.map((d, i) => `<div class="${i === 0 ? 'text-rose-500' : ''}">${d}</div>`).join('')}
           </div>
 
-          <!-- Sel Hari Grid -->
-          <div class="grid grid-cols-7 gap-1">
+          <!-- Sel Hari Grid dengan Pill Penanda Aktif Melayang Halus -->
+          <div id="calendar-grid-cells" class="relative grid grid-cols-7 gap-1">
+            <!-- Indikator Pill Aktif Melayang Mulus (Liquid Pill) -->
+            <div
+              id="calendar-active-pill"
+              class="absolute pointer-events-none rounded-xl bg-[#09090B] dark:bg-white shadow-sm ring-2 ring-zinc-900 dark:ring-white z-0 opacity-0"
+              style="transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), width 200ms ease, height 200ms ease, opacity 180ms ease;"
+            ></div>
+
             <!-- Slot Kosong Sebelum Tanggal 1 -->
             ${Array.from({ length: firstDayIndex })
               .map(() => `<div class="h-10 sm:h-12 rounded-xl bg-transparent"></div>`)
@@ -225,17 +374,14 @@ export class CalendarView {
                 const txInfo = dateTxMap[dStr];
 
                 let cellClass =
-                  'h-10 sm:h-12 rounded-xl flex flex-col items-center justify-center relative cursor-pointer transition-all duration-150 select-none ';
+                  'h-10 sm:h-12 rounded-xl flex flex-col items-center justify-center relative cursor-pointer select-none z-10 transition-colors duration-150 ';
 
-                if (isSelected) {
+                if (isToday) {
                   cellClass +=
-                    'bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] font-extrabold shadow-sm ring-2 ring-zinc-900 dark:ring-white z-10';
-                } else if (isToday) {
-                  cellClass +=
-                    'border-2 border-[#09090B] dark:border-white bg-[#F9F9F8] dark:bg-[#121214] font-bold text-[#09090B] dark:text-white';
+                    'border-2 border-[#09090B] dark:border-white bg-[#F9F9F8] dark:bg-[#121214] font-bold ';
                 } else {
                   cellClass +=
-                    'hover:bg-[#F4F4F5] dark:hover:bg-[#27272A] text-[#09090B] dark:text-[#F4F4F5] font-medium';
+                    'hover:bg-[#F4F4F5] dark:hover:bg-[#27272A] ';
                 }
 
                 return `
@@ -244,21 +390,21 @@ export class CalendarView {
                   class="${cellClass}"
                   title="${dStr}${txInfo ? ` (${txInfo.count} transaksi)` : ''}"
                 >
-                  <span class="text-xs sm:text-sm leading-none">${dayNum}</span>
+                  <span class="day-num text-xs sm:text-sm leading-none transition-colors duration-150 ${isSelected ? 'font-extrabold text-white dark:text-[#09090B]' : 'font-medium text-[#09090B] dark:text-[#F4F4F5]'}">${dayNum}</span>
                   
                   <!-- Titik Indikator Transaksi -->
                   ${
                     txInfo
                       ? `
-                    <div class="flex items-center gap-0.5 mt-1">
+                    <div class="tx-dots flex items-center gap-0.5 mt-1">
                       ${
                         txInfo.hasExpense
-                          ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-rose-200' : 'bg-rose-500'}"></span>`
+                          ? `<span class="dot-expense w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-rose-200' : 'bg-rose-500'}"></span>`
                           : ''
                       }
                       ${
                         txInfo.hasIncome
-                          ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-200' : 'bg-emerald-500'}"></span>`
+                          ? `<span class="dot-income w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-200' : 'bg-emerald-500'}"></span>`
                           : ''
                       }
                     </div>
@@ -277,12 +423,20 @@ export class CalendarView {
 
     renderIcons(this.container);
     this.attachEvents();
+
+    // Posisikan pill selektor secara instan saat pertama kali dimount
+    if (selectedDate) {
+      this.positionPill(selectedDate, true);
+    }
   }
 
   /**
    * Cleanup saat komponen di-unmount.
    */
   destroy() {
+    if (this.handleResize) {
+      window.removeEventListener('resize', this.handleResize);
+    }
     if (this.unsubscribe) {
       this.unsubscribe();
     }

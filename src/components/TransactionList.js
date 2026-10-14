@@ -161,9 +161,9 @@ export class TransactionList {
     }
 
     this.container.innerHTML = `
-      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 space-y-4 shadow-xs sm:shadow-sm min-h-[420px] flex flex-col justify-between">
+      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 shadow-xs sm:shadow-sm min-h-[420px] h-full flex-1 flex flex-col justify-between">
         
-        <div class="space-y-4 flex-1 flex flex-col">
+        <div class="space-y-4 flex-1 flex flex-col justify-between">
           <!-- Header & Bilah Filter Cepat -->
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
             <div>
@@ -221,17 +221,17 @@ export class TransactionList {
           </div>
 
           <!-- Daftar Mutasi Transaksi (Kontras Bersih Gelap & Terang dengan Transisi Filter Mulus) -->
-          <div class="space-y-2.5 flex-1 flex flex-col justify-center tx-filter-fade">
+          <div class="space-y-2.5 flex-1 flex flex-col justify-center my-auto tx-filter-fade">
             ${
               filteredList.length === 0
                 ? `
-              <div class="py-12 flex-1 flex flex-col items-center justify-center text-center space-y-3 min-h-[220px]">
-                <div class="w-12 h-12 rounded-full bg-[#F9F9F8] dark:bg-[#09090B] text-[#71717A] dark:text-[#A1A1AA] border border-[#E4E4E7] dark:border-[#27272A] flex items-center justify-center mx-auto">
+              <div class="py-10 flex-1 flex flex-col items-center justify-center text-center space-y-3.5 my-auto">
+                <div class="w-12 h-12 rounded-full bg-[#F9F9F8] dark:bg-[#09090B] text-[#71717A] dark:text-[#A1A1AA] border border-[#E4E4E7] dark:border-[#27272A] flex items-center justify-center mx-auto shadow-2xs">
                   <i data-lucide="receipt" class="w-6 h-6"></i>
                 </div>
-                <div>
+                <div class="space-y-1">
                   <p class="text-sm font-bold text-[#09090B] dark:text-[#F4F4F5]">Belum Ada Transaksi</p>
-                  <p class="text-xs text-[#71717A] dark:text-[#A1A1AA] mt-1 max-w-xs mx-auto">
+                  <p class="text-xs text-[#71717A] dark:text-[#A1A1AA] max-w-xs mx-auto">
                     ${
                       this.currentFilter === 'all'
                         ? 'Belum ada mutasi tercatat pada periode ini. Catat transaksi baru atau pindai struk belanja Anda.'
@@ -239,11 +239,11 @@ export class TransactionList {
                     }
                   </p>
                 </div>
-                <div class="pt-1">
+                <div class="pt-2">
                   <button
                     id="btn-empty-add-tx"
                     type="button"
-                    class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-xs font-semibold cursor-pointer transition-colors active:opacity-80 shadow-xs"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-xs font-semibold cursor-pointer transition-colors active:opacity-80 shadow-xs"
                   >
                     <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                     <span>Catat Transaksi Sekarang</span>

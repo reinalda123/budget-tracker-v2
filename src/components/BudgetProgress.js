@@ -162,7 +162,7 @@ export class BudgetProgress {
     const maskedTotalBudget = maskValue(formatRupiah(totalBudget), isMasked);
 
     this.container.innerHTML = `
-      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 space-y-6">
+      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 space-y-6 h-full flex-1 flex flex-col justify-between shadow-xs sm:shadow-sm">
         
         <!-- Header Komponen -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">

@@ -25,131 +25,7 @@ import { initIdleManager } from './services/idleManager.js';
 import { login, logout, isAuthenticated } from './services/auth.js';
 import { renderIcons } from './utils/icons.js';
 
-/**
- * Data mock awal untuk pengguna baru jika database D1 masih kosong
- */
-const mockAccounts = [
-  {
-    id: 'acc-bca',
-    name: 'BCA Platinum Debit',
-    provider: 'BCA',
-    accountNumber: '8820394812',
-    balance: 24750000,
-    type: 'bank',
-    theme: 'bca',
-  },
-  {
-    id: 'acc-mandiri',
-    name: 'Mandiri Payroll Tabungan',
-    provider: 'Mandiri',
-    accountNumber: '1370098234123',
-    balance: 8350000,
-    type: 'bank',
-    theme: 'mandiri',
-  },
-  {
-    id: 'acc-bni',
-    name: 'BNI Taplus Bisnis',
-    provider: 'BNI',
-    accountNumber: '0234567891',
-    balance: 15400000,
-    type: 'bank',
-    theme: 'bni',
-  },
-  {
-    id: 'acc-dana',
-    name: 'DANA Saldo Utama',
-    provider: 'DANA',
-    accountNumber: '081289234567',
-    balance: 1450000,
-    type: 'ewallet',
-    theme: 'dana',
-  },
-  {
-    id: 'acc-shopeepay',
-    name: 'ShopeePay Plus',
-    provider: 'ShopeePay',
-    accountNumber: '081289234567',
-    balance: 620000,
-    type: 'ewallet',
-    theme: 'shopeepay',
-  },
-  {
-    id: 'acc-cash',
-    name: 'Dompet Kas Tunai',
-    provider: 'Cash',
-    accountNumber: 'TUNAI-01',
-    balance: 950000,
-    type: 'cash',
-    theme: 'cash',
-  },
-];
 
-const mockCategories = [
-  {
-    id: 'cat-1',
-    name: 'Makanan & Kuliner',
-    budget: 4500000,
-    spent: 3200000,
-    icon: 'utensils',
-  },
-  {
-    id: 'cat-2',
-    name: 'Belanja Kebutuhan',
-    budget: 3000000,
-    spent: 3250000,
-    icon: 'shopping-bag',
-  },
-  {
-    id: 'cat-3',
-    name: 'Transportasi & Bensin',
-    budget: 1500000,
-    spent: 1350000,
-    icon: 'car',
-  },
-  {
-    id: 'cat-4',
-    name: 'Tagihan & Utilitas',
-    budget: 2000000,
-    spent: 1800000,
-    icon: 'zap',
-  },
-  {
-    id: 'cat-5',
-    name: 'Hiburan & Rekreasi',
-    budget: 1000000,
-    spent: 450000,
-    icon: 'film',
-  },
-  {
-    id: 'cat-6',
-    name: 'Kesehatan & Medis',
-    budget: 1200000,
-    spent: 350000,
-    icon: 'heart-pulse',
-  },
-];
-
-const mockTransactions = [
-  {
-    id: 'tx-1',
-    note: 'Supermarket Belanja Bulanan',
-    category: 'Belanja Kebutuhan',
-    accountName: 'BCA Platinum Debit',
-    amount: 850000,
-    type: 'expense',
-    date: '2026-10-13T14:30:00Z',
-  },
-  {
-    id: 'tx-2',
-    note: 'Gaji Payroll Bulanan',
-    category: 'Gaji & Pendapatan',
-    accountName: 'Mandiri Payroll Tabungan',
-    amount: 25000000,
-    type: 'income',
-    date: '2026-10-12T09:00:00Z',
-  },
-];
 
 // Wadah elemen DOM utama
 const navbarRoot = document.querySelector('#navbar-root');
@@ -294,77 +170,191 @@ function renderHomeKpi(container) {
   });
 }
 
+const TAB_ORDER = ['home', 'wallets', 'activity', 'report'];
+let isTabTransitioning = false;
+let pendingTabTransition = null;
+
+function createHomeTabElement() {
+  const el = document.createElement('div');
+  el.className = 'space-y-6 w-full';
+  el.innerHTML = `
+    <section id="home-kpi-root"></section>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <!-- Kolom Kiri: Daily Burn Rate + Recent Transactions membentang penuh setinggi kolom kanan -->
+      <div class="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
+        <section id="daily-burn-root"></section>
+        <section id="recent-transactions-root" class="flex-1 flex flex-col min-h-[420px]"></section>
+      </div>
+
+      <!-- Kolom Kanan: Kategori Anggaran membentang penuh setara tinggi kolom kiri -->
+      <div class="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
+        <section id="budget-progress-root" class="flex-1 flex flex-col"></section>
+      </div>
+    </div>
+  `;
+
+  renderHomeKpi(el.querySelector('#home-kpi-root'));
+  mountDailyBurnRate(el.querySelector('#daily-burn-root'));
+  mountBudgetProgress(el.querySelector('#budget-progress-root'));
+  mountTransactionList(el.querySelector('#recent-transactions-root'), {
+    limit: 5,
+    showFilter: false,
+    title: 'Transaksi Terbaru',
+    onViewAll: () => {
+      setActiveTab('activity');
+    },
+  });
+
+  return el;
+}
+
+function createWalletsTabElement() {
+  const el = document.createElement('div');
+  el.className = 'space-y-6 w-full';
+  el.innerHTML = `<section id="wallets-view-root" class="space-y-6"></section>`;
+  mountWalletCards(el.querySelector('#wallets-view-root'));
+  return el;
+}
+
+function createActivityTabElement() {
+  const el = document.createElement('div');
+  el.className = 'space-y-6 w-full';
+  el.innerHTML = `
+    <section id="calendar-view-root"></section>
+    <section id="full-transactions-root" class="min-h-[420px]"></section>
+  `;
+  mountCalendarView(el.querySelector('#calendar-view-root'));
+  mountTransactionList(el.querySelector('#full-transactions-root'), {
+    limit: null,
+    showFilter: true,
+    title: 'Semua Riwayat Transaksi',
+  });
+  return el;
+}
+
+function createReportTabElement() {
+  const el = document.createElement('div');
+  el.className = 'space-y-6 w-full';
+  el.innerHTML = `<section id="report-view-root" class="space-y-6"></section>`;
+  mountReportView(el.querySelector('#report-view-root'));
+  return el;
+}
+
+function createTabElement(tab) {
+  switch (tab) {
+    case 'home':
+      return createHomeTabElement();
+    case 'wallets':
+      return createWalletsTabElement();
+    case 'activity':
+      return createActivityTabElement();
+    case 'report':
+      return createReportTabElement();
+    default:
+      return createHomeTabElement();
+  }
+}
+
 /**
- * Merender konten utama dashboard berdasarkan activeTab ('home' | 'wallets' | 'activity' | 'report')
+ * Transisi geser horizontal mulus (smooth horizontal slide) antar menu tanpa flicker / layar kosong.
+ * @param {string} fromTab
+ * @param {string} toTab
+ */
+function transitionToTab(fromTab, toTab) {
+  if (!dashboardRoot) return;
+  const viewport = dashboardRoot.querySelector('#tab-slider-viewport');
+  const currentPanel = viewport?.querySelector('#active-tab-panel');
+
+  if (!viewport || !currentPanel) {
+    renderMainContent();
+    return;
+  }
+
+  if (isTabTransitioning) {
+    pendingTabTransition = { fromTab, toTab };
+    return;
+  }
+
+  isTabTransitioning = true;
+  const fromIdx = TAB_ORDER.indexOf(fromTab);
+  const toIdx = TAB_ORDER.indexOf(toTab);
+  const isForward = toIdx >= fromIdx;
+
+  const nextPanel = document.createElement('div');
+  nextPanel.id = 'active-tab-panel';
+  nextPanel.className = 'w-full';
+  nextPanel.appendChild(createTabElement(toTab));
+
+  const track = document.createElement('div');
+  track.className = 'flex w-[200%]';
+  track.style.willChange = 'transform';
+
+  currentPanel.style.width = '50%';
+  currentPanel.style.flexShrink = '0';
+  nextPanel.style.width = '50%';
+  nextPanel.style.flexShrink = '0';
+
+  if (isForward) {
+    track.appendChild(currentPanel);
+    track.appendChild(nextPanel);
+    track.style.transform = 'translate3d(0%, 0, 0)';
+  } else {
+    track.appendChild(nextPanel);
+    track.appendChild(currentPanel);
+    track.style.transform = 'translate3d(-50%, 0, 0)';
+  }
+
+  viewport.innerHTML = '';
+  viewport.appendChild(track);
+
+  // Force reflow
+  void track.offsetHeight;
+
+  const animation = track.animate(
+    isForward
+      ? [{ transform: 'translate3d(0%, 0, 0)' }, { transform: 'translate3d(-50%, 0, 0)' }]
+      : [{ transform: 'translate3d(-50%, 0, 0)' }, { transform: 'translate3d(0%, 0, 0)' }],
+    {
+      duration: 220,
+      easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+      fill: 'forwards',
+    }
+  );
+
+  animation.onfinish = () => {
+    nextPanel.style.width = '100%';
+    nextPanel.style.flexShrink = '';
+    viewport.innerHTML = '';
+    viewport.appendChild(nextPanel);
+    renderIcons(nextPanel);
+    isTabTransitioning = false;
+
+    if (pendingTabTransition) {
+      const pending = pendingTabTransition;
+      pendingTabTransition = null;
+      transitionToTab(pending.fromTab, pending.toTab);
+    }
+  };
+}
+
+/**
+ * Merender konten utama dashboard awal dengan kontainer slider viewport horizontal
  */
 function renderMainContent() {
   if (!dashboardRoot) return;
   const currentTab = getState().activeTab || 'home';
 
-  dashboardRoot.innerHTML = '';
+  dashboardRoot.innerHTML = `
+    <div id="tab-slider-viewport" class="relative w-full overflow-hidden">
+      <div id="active-tab-panel" class="w-full"></div>
+    </div>
+  `;
 
-  switch (currentTab) {
-    case 'home':
-      dashboardRoot.innerHTML = `
-        <div class="space-y-6 tab-content-enter">
-          <section id="home-kpi-root"></section>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div class="lg:col-span-7 xl:col-span-8 space-y-6">
-              <section id="daily-burn-root"></section>
-              <section id="recent-transactions-root" class="min-h-[420px]"></section>
-            </div>
-
-            <div class="lg:col-span-5 xl:col-span-4 space-y-6">
-              <section id="budget-progress-root"></section>
-            </div>
-          </div>
-        </div>
-      `;
-
-      renderHomeKpi(dashboardRoot.querySelector('#home-kpi-root'));
-      mountDailyBurnRate(dashboardRoot.querySelector('#daily-burn-root'));
-      mountBudgetProgress(dashboardRoot.querySelector('#budget-progress-root'));
-      mountTransactionList(dashboardRoot.querySelector('#recent-transactions-root'), {
-        limit: 5,
-        showFilter: false,
-        title: 'Transaksi Terbaru',
-        onViewAll: () => {
-          setActiveTab('activity');
-        },
-      });
-      break;
-
-    case 'wallets':
-      dashboardRoot.innerHTML = `<section id="wallets-view-root" class="space-y-6 tab-content-enter"></section>`;
-      mountWalletCards(dashboardRoot.querySelector('#wallets-view-root'));
-      break;
-
-    case 'activity':
-      dashboardRoot.innerHTML = `
-        <div class="space-y-6 tab-content-enter">
-          <section id="calendar-view-root"></section>
-          <section id="full-transactions-root" class="min-h-[420px]"></section>
-        </div>
-      `;
-      mountCalendarView(dashboardRoot.querySelector('#calendar-view-root'));
-      mountTransactionList(dashboardRoot.querySelector('#full-transactions-root'), {
-        limit: null,
-        showFilter: true,
-        title: 'Semua Riwayat Transaksi',
-      });
-      break;
-
-    case 'report':
-      dashboardRoot.innerHTML = `<section id="report-view-root" class="space-y-6 tab-content-enter"></section>`;
-      mountReportView(dashboardRoot.querySelector('#report-view-root'));
-      break;
-
-    default:
-      setActiveTab('home');
-      break;
+  const panel = dashboardRoot.querySelector('#active-tab-panel');
+  if (panel) {
+    panel.appendChild(createTabElement(currentTab));
   }
-
   renderIcons(dashboardRoot);
 }
 
@@ -562,18 +552,6 @@ function mountAuthenticatedDashboard() {
     fabRoot.classList.add('hidden');
   }
 
-  // Inisialisasi mock data di memori jika pengguna baru belum memiliki data
-  const currentStoreState = getState();
-  if (currentStoreState.accounts.length === 0) {
-    setState({ accounts: mockAccounts });
-  }
-  if (currentStoreState.categories.length === 0) {
-    setState({ categories: mockCategories });
-  }
-  if (currentStoreState.transactions.length === 0) {
-    setState({ transactions: mockTransactions });
-  }
-
   // 1. Inisialisasi Header Navbar Atas
   if (navbarRoot) {
     navbarInstance = createNavbar({
@@ -597,13 +575,14 @@ function mountAuthenticatedDashboard() {
   // 2. Render Konten Utama Dashboard
   renderMainContent();
 
-  // 3. Langganan perubahan activeTab atau state perubahan data
-  let prevActiveTab = getState().activeTab;
+  // 3. Langganan perubahan activeTab dengan transisi horizontal slide mulus
+  let prevActiveTab = getState().activeTab || 'home';
   storeUnsubscribe = subscribe((state) => {
-    const currentTab = state.activeTab;
+    const currentTab = state.activeTab || 'home';
     if (currentTab !== prevActiveTab) {
+      const fromTab = prevActiveTab;
       prevActiveTab = currentTab;
-      renderMainContent();
+      transitionToTab(fromTab, currentTab);
     } else if (currentTab === 'home') {
       const kpiRoot = dashboardRoot?.querySelector('#home-kpi-root');
       if (kpiRoot) {

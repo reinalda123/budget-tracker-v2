@@ -30,41 +30,7 @@ export function openTransactionModal(options = {}) {
   if (!root) return;
 
   const state = getState();
-  const defaultAccounts = [
-    {
-      id: 'acc-bca',
-      name: 'BCA Platinum Debit',
-      provider: 'BCA',
-      balance: 24750000,
-      type: 'bank',
-      theme: 'bca',
-    },
-    {
-      id: 'acc-mandiri',
-      name: 'Mandiri Payroll Tabungan',
-      provider: 'Mandiri',
-      balance: 8350000,
-      type: 'bank',
-      theme: 'mandiri',
-    },
-    {
-      id: 'acc-bni',
-      name: 'BNI Taplus Bisnis',
-      provider: 'BNI',
-      balance: 15400000,
-      type: 'bank',
-      theme: 'bni',
-    },
-    {
-      id: 'acc-dana',
-      name: 'DANA Saldo Utama',
-      provider: 'DANA',
-      balance: 1250000,
-      type: 'ewallet',
-      theme: 'dana',
-    },
-  ];
-  const accounts = (state.accounts && state.accounts.length > 0) ? state.accounts : defaultAccounts;
+  const accounts = state.accounts || [];
   const categories = state.categories || [];
   const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -202,10 +168,9 @@ export function openTransactionModal(options = {}) {
                 required
                 class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
               >
-                ${accounts.map((a) => {
-                  const isSelected = a.id === 'acc-bca' || (a.name && a.name.includes('BCA'));
-                  return `<option value="${a.id}" ${isSelected ? 'selected' : ''}>${a.name} (${a.provider || 'Bank'})</option>`;
-                }).join('')}
+                ${accounts.length > 0
+                  ? accounts.map((a, idx) => `<option value="${a.id}" ${idx === 0 ? 'selected' : ''}>${a.name} (${a.provider || 'Bank'})</option>`).join('')
+                  : '<option value="acc-main" selected>Dompet Utama (Tunai)</option>'}
               </select>
             </div>
           </div>
@@ -317,16 +282,15 @@ export function openTransactionModal(options = {}) {
       const categorySelect = root.querySelector('#tx_category');
       const category = categorySelect?.value || selectedCatName || 'Belanja Kebutuhan';
 
-      // Pastikan accountId valid dari dropdown "BCA Platinum Debit", bukan undefined/kosong
+      // Pastikan accountId valid dari dropdown
       const accountSelect = root.querySelector('#tx_account');
       let accountId = accountSelect?.value;
       if (!accountId || accountId === 'undefined' || accountId === '') {
-        const bcaAcc = accounts.find((a) => a.id === 'acc-bca' || a.name?.toLowerCase().includes('bca'));
-        accountId = bcaAcc ? bcaAcc.id : (accounts[0]?.id || 'acc-bca');
+        accountId = accounts[0]?.id || 'acc-main';
       }
 
-      const selectedAccount = accounts.find((a) => String(a.id) === String(accountId)) || accounts[0] || { id: 'acc-bca', name: 'BCA Platinum Debit' };
-      const accountName = selectedAccount.name || 'BCA Platinum Debit';
+      const selectedAccount = accounts.find((a) => String(a.id) === String(accountId)) || accounts[0] || { id: 'acc-main', name: 'Dompet Utama' };
+      const accountName = selectedAccount.name || 'Dompet Utama';
 
       // Format tanggal string 'YYYY-MM-DD'
       const dateInput = root.querySelector('#tx_date');

@@ -14,10 +14,18 @@ function getInitialLocalData() {
     const saved = localStorage.getItem(LOCAL_CACHE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
+      const isMockTx = (t) => t && (t.id === 'tx-1' || t.id === 'tx-2');
+      const isMockAcc = (a) => a && (a.id === 'acc-bca' || a.id === 'acc-mandiri' || a.id === 'acc-bni' || a.id === 'acc-dana' || a.id === 'acc-shopeepay' || a.id === 'acc-cash');
+      const isMockCat = (c) => c && (c.id === 'cat-1' || c.id === 'cat-2' || c.id === 'cat-3' || c.id === 'cat-4' || c.id === 'cat-5' || c.id === 'cat-6');
+
+      const accounts = Array.isArray(parsed.accounts) ? parsed.accounts.filter((a) => !isMockAcc(a)) : null;
+      const categories = Array.isArray(parsed.categories) ? parsed.categories.filter((c) => !isMockCat(c)) : null;
+      const transactions = Array.isArray(parsed.transactions) ? parsed.transactions.filter((t) => !isMockTx(t)) : null;
+
       return {
-        accounts: Array.isArray(parsed.accounts) ? parsed.accounts : null,
-        categories: Array.isArray(parsed.categories) ? parsed.categories : null,
-        transactions: Array.isArray(parsed.transactions) ? parsed.transactions : null,
+        accounts: accounts && accounts.length > 0 ? accounts : null,
+        categories: categories && categories.length > 0 ? categories : null,
+        transactions: transactions && transactions.length > 0 ? transactions : null,
       };
     }
   } catch (err) {
