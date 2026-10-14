@@ -253,7 +253,7 @@ export function showIosInstallPrompt(options = {}) {
           <button
             type="button"
             id="btn-understand-ios-pwa"
-            class="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-center transition bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] active:scale-[0.98] cursor-pointer shadow-xs"
+            class="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-center transition bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] active:opacity-85 cursor-pointer shadow-xs"
           >
             Mengerti, Saya Pasang Sekarang
           </button>

@@ -3,6 +3,8 @@ import { store, getState, subscribe, removeCategory } from '../state/store.js';
 import { formatRupiah, maskValue } from '../utils/formatters.js';
 import { getRemainingDaysInMonth } from '../utils/dates.js';
 import { renderIcons } from '../utils/icons.js';
+import { openConfirmDeleteCategoryModal } from './Modals.js';
+import { showToast } from '../utils/toast.js';
 
 /**
  * Pemetaan ikon Lucide berdasarkan nama/tipe kategori
@@ -97,16 +99,23 @@ export class BudgetProgress {
       });
     });
 
-    // Tombol Hapus Pos Anggaran
+    // Tombol Hapus Pos Anggaran dengan Modal Dialog In-App
     const deleteButtons = this.container.querySelectorAll('[data-delete-category-id]');
     deleteButtons.forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const catId = btn.getAttribute('data-delete-category-id');
         const catName = btn.getAttribute('data-category-name') || 'pos ini';
-        if (window.confirm(`Yakin ingin menghapus pos anggaran "${catName}"?`)) {
-          removeCategory(catId);
-        }
+        const state = getState();
+        const cat = (state.categories || []).find((c) => String(c.id) === String(catId)) || { id: catId, name: catName };
+
+        openConfirmDeleteCategoryModal({
+          category: cat,
+          onConfirm: () => {
+            removeCategory(catId);
+            showToast('Pos anggaran berhasil dihapus', 'success');
+          },
+        });
       });
     });
   }
@@ -172,7 +181,7 @@ export class BudgetProgress {
             <button
               id="btn-add-category"
               type="button"
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F9F9F8] hover:bg-[#E4E4E7] dark:bg-[#09090B] dark:hover:bg-[#27272A] text-[#09090B] dark:text-[#F4F4F5] font-bold text-xs border border-[#E4E4E7] dark:border-[#27272A] transition-all cursor-pointer active:scale-95"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F9F9F8] hover:bg-[#E4E4E7] dark:bg-[#09090B] dark:hover:bg-[#27272A] text-[#09090B] dark:text-[#F4F4F5] font-bold text-xs border border-[#E4E4E7] dark:border-[#27272A] transition-colors cursor-pointer active:opacity-80"
             >
               <i data-lucide="plus" class="w-3.5 h-3.5"></i>
               <span>+ Tambah Pos</span>
@@ -205,19 +214,19 @@ export class BudgetProgress {
                 </span>
               </div>
               <p class="text-2xl sm:text-3xl font-extrabold text-[#09090B] dark:text-[#F4F4F5] tracking-tight">
-                ${maskedDailyLimit}
+                <span class="privacy-mask">${maskedDailyLimit}</span>
                 <span class="text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] font-sans tracking-normal">/ hari</span>
               </p>
               <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">
-                ${periodNote} Batas aman: <span class="font-semibold text-[#09090B] dark:text-[#F4F4F5]">${maskedDailyLimit} / hari</span>
+                ${periodNote} Batas aman: <span class="font-semibold text-[#09090B] dark:text-[#F4F4F5] privacy-mask">${maskedDailyLimit} / hari</span>
               </p>
             </div>
 
             <!-- Ringkasan Angka Cepat -->
             <div class="sm:text-right border-t sm:border-t-0 sm:border-l border-[#E4E4E7] dark:border-[#27272A] sm:pl-5 pt-2 sm:pt-0 space-y-1">
               <span class="text-[11px] text-[#71717A] dark:text-[#A1A1AA] block font-medium">Sisa Total Anggaran</span>
-              <span class="text-sm sm:text-base font-bold text-[#09090B] dark:text-[#F4F4F5] block">${maskedTotalRemaining}</span>
-              <span class="text-[10px] text-[#71717A] dark:text-[#A1A1AA] block">dari total plafon ${maskedTotalBudget}</span>
+              <span class="text-sm sm:text-base font-bold text-[#09090B] dark:text-[#F4F4F5] block privacy-mask">${maskedTotalRemaining}</span>
+              <span class="text-[10px] text-[#71717A] dark:text-[#A1A1AA] block">dari total plafon <span class="privacy-mask">${maskedTotalBudget}</span></span>
             </div>
 
           </div>

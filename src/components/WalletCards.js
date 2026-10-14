@@ -2,7 +2,8 @@
 import { store, getState, subscribe, removeAccount } from '../state/store.js';
 import { formatRupiah, maskValue } from '../utils/formatters.js';
 import { renderIcons } from '../utils/icons.js';
-import { openEditWalletNameModal, openAddAccountModal } from './Modals.js';
+import { openEditWalletNameModal, openAddAccountModal, openConfirmDeleteWalletModal } from './Modals.js';
+import { showToast } from '../utils/toast.js';
 
 /**
  * Pilihan palet gradasi mockup kartu rekening & e-wallet
@@ -167,15 +168,23 @@ export class WalletCards {
       });
     }
 
-    // Tombol Hapus Rekening pada setiap kartu
+    // Tombol Hapus Rekening pada setiap kartu dengan Custom Modal Dialog In-App
     const deleteButtons = this.container.querySelectorAll('[data-delete-account-id]');
     deleteButtons.forEach((btn) => {
       btn.addEventListener('click', (event) => {
         event.stopPropagation(); // Mencegah klik kartu terpicu
         const accId = btn.getAttribute('data-delete-account-id');
-        if (window.confirm('Yakin ingin menghapus rekening ini?')) {
-          removeAccount(accId);
-        }
+        const state = getState();
+        const account = (state.accounts || []).find((a) => String(a.id) === String(accId));
+        if (!account) return;
+
+        openConfirmDeleteWalletModal({
+          account,
+          onConfirm: () => {
+            removeAccount(accId);
+            showToast('Rekening berhasil dihapus', 'success');
+          },
+        });
       });
     });
 
@@ -215,7 +224,7 @@ export class WalletCards {
               Rekening & Dompet Digital
             </h2>
             <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">
-              Total Saldo: <span class="font-semibold text-[#09090B] dark:text-[#F4F4F5]">${maskedTotal}</span> • ${accounts.length} rekening
+              Total Saldo: <span class="font-semibold text-[#09090B] dark:text-[#F4F4F5] privacy-mask">${maskedTotal}</span> • ${accounts.length} rekening
             </p>
           </div>
 
@@ -224,7 +233,7 @@ export class WalletCards {
             <button
               id="btn-open-transfer"
               type="button"
-              class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer active:scale-95"
+              class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer active:opacity-80"
             >
               <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
               <span>Transfer Antar Rekening</span>
@@ -247,10 +256,10 @@ export class WalletCards {
               <article
                 data-account-id="${acc.id}"
                 tabindex="0"
-                class="w-full cursor-pointer group relative overflow-hidden rounded-2xl p-5 bg-gradient-to-tr ${theme.gradient} text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-200 select-none border border-white/10"
+                class="w-full cursor-pointer group relative overflow-hidden rounded-2xl p-5 bg-gradient-to-tr ${theme.gradient} text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 select-none border border-white/10"
               >
                 <!-- Dekorasi Pencahayaan Latar Kartu -->
-                <div class="absolute -right-12 -top-12 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
+                <div class="absolute -right-12 -top-12 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none group-hover:opacity-80 transition-opacity duration-300"></div>
                 <div class="absolute -left-10 -bottom-10 w-32 h-32 rounded-full bg-black/20 blur-xl pointer-events-none"></div>
 
                 <div class="relative z-10 flex flex-col justify-between h-44">
@@ -284,7 +293,7 @@ export class WalletCards {
                   <div class="my-auto">
                     <span class="text-[10px] uppercase tracking-wider text-white/60 font-medium">Saldo Tersedia</span>
                     <p class="text-2xl font-extrabold tracking-tight drop-shadow-sm text-white">
-                      ${displayBalance}
+                      <span class="privacy-mask">${displayBalance}</span>
                     </p>
                   </div>
 
@@ -294,7 +303,7 @@ export class WalletCards {
                       <span class="font-bold text-sm sm:text-base text-white truncate" title="${acc.name}">${acc.name || 'Rekening'}</span>
                       <button
                         type="button"
-                        class="btn-edit-wallet p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition cursor-pointer shrink-0"
+                        class="btn-edit-wallet p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition cursor-pointer shrink-0 active:opacity-80"
                         data-id="${acc.id}"
                         data-edit-account-id="${acc.id}"
                         title="Edit nama dompet / bank"
@@ -309,7 +318,7 @@ export class WalletCards {
                         type="button"
                         data-transfer-account-id="${acc.id}"
                         title="Transfer dari rekening ini"
-                        class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold backdrop-blur-sm border border-white/20 transition-all cursor-pointer active:scale-95"
+                        class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold backdrop-blur-sm border border-white/20 transition-colors cursor-pointer active:opacity-80"
                       >
                         <i data-lucide="arrow-left-right" class="w-3 h-3"></i>
                         <span>Transfer</span>
@@ -318,7 +327,7 @@ export class WalletCards {
                         type="button"
                         data-delete-account-id="${acc.id}"
                         title="Hapus rekening"
-                        class="w-7 h-7 rounded-lg bg-black/20 hover:bg-rose-600/90 text-white/70 hover:text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/10 hover:border-rose-400 cursor-pointer active:scale-90"
+                        class="w-7 h-7 rounded-lg bg-black/20 hover:bg-rose-600/90 text-white/70 hover:text-white flex items-center justify-center transition-colors backdrop-blur-sm border border-white/10 hover:border-rose-400 cursor-pointer active:opacity-80"
                       >
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                       </button>

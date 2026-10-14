@@ -31,13 +31,17 @@ export class Navbar {
   }
 
   /**
-   * Menangani toggle sensor saldo mata (isMasked).
+   * Menangani toggle sensor saldo mata (isMasked) dengan transisi blur halus.
    */
   handleToggleMask() {
-    const currentState = getState();
-    setState({
-      isMasked: !currentState.isMasked,
-    });
+    const maskElements = document.querySelectorAll('.privacy-mask');
+    maskElements.forEach((el) => el.classList.add('privacy-mask-blurring'));
+    setTimeout(() => {
+      const currentState = getState();
+      setState({
+        isMasked: !currentState.isMasked,
+      });
+    }, 60);
   }
 
   /**
@@ -94,10 +98,10 @@ export class Navbar {
           id="btn-sync-cloud-status"
           type="button"
           title="Sedang menyinkronkan data dengan Cloudflare D1... (Klik untuk sinkronkan lagi)"
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#F9F9F8] dark:bg-[#121214] text-[11px] font-semibold text-[#09090B] dark:text-[#F4F4F5] border border-[#E4E4E7] dark:border-[#27272A] cursor-pointer transition select-none hover:bg-[#E4E4E7] dark:hover:bg-[#27272A]"
+          class="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-full bg-[#F9F9F8] dark:bg-[#121214] text-[11px] font-semibold text-[#09090B] dark:text-[#F4F4F5] border border-[#E4E4E7] dark:border-[#27272A] cursor-pointer transition select-none hover:bg-[#E4E4E7] dark:hover:bg-[#27272A] active:opacity-80"
         >
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin"></i>
-          <span>Menyinkronkan...</span>
+          <span class="hidden sm:inline">Menyinkronkan...</span>
         </button>
       `;
     } else if (syncStatus === 'online') {
@@ -106,10 +110,10 @@ export class Navbar {
           id="btn-sync-cloud-status"
           type="button"
           title="Data tersinkron dengan Cloudflare D1. Klik untuk sinkronisasi ulang."
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#F9F9F8] dark:bg-[#121214] text-[11px] font-semibold text-[#71717A] dark:text-[#A1A1AA] border border-[#E4E4E7] dark:border-[#27272A] hover:bg-[#E4E4E7] dark:hover:bg-[#27272A] cursor-pointer transition select-none"
+          class="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-full bg-[#F9F9F8] dark:bg-[#121214] text-[11px] font-semibold text-[#71717A] dark:text-[#A1A1AA] border border-[#E4E4E7] dark:border-[#27272A] hover:bg-[#E4E4E7] dark:hover:bg-[#27272A] cursor-pointer transition select-none active:opacity-80"
         >
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Tersinkron</span>
+          <span class="hidden sm:inline">Tersinkron</span>
         </button>
       `;
     } else {
@@ -119,37 +123,37 @@ export class Navbar {
           id="btn-sync-cloud-status"
           type="button"
           title="Gagal sinkron dengan Cloudflare D1. Klik untuk coba lagi."
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-[11px] font-semibold text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer transition select-none"
+          class="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-[11px] font-semibold text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer transition select-none active:opacity-80"
         >
           <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-          <span>Gagal Sinkron</span>
+          <span class="hidden sm:inline">Gagal Sinkron</span>
         </button>
       `;
     }
 
     this.container.innerHTML = `
-      <nav class="bg-[#FFFFFF]/90 dark:bg-[#121214]/90 backdrop-blur-md border-b border-[#E4E4E7] dark:border-[#27272A] sticky top-0 z-40 transition-colors">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex items-center justify-between h-16">
+      <nav class="bg-[#FFFFFF]/90 dark:bg-[#121214]/90 backdrop-blur-md border-b border-[#E4E4E7] dark:border-[#27272A] sticky top-0 z-40 transition-colors w-full">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
+          <div class="flex items-center justify-between h-14 sm:h-16 gap-2">
             
             <!-- Brand / Logo -->
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-[#09090B] dark:bg-white flex items-center justify-center text-white dark:text-[#09090B] shadow-xs">
-                <i data-lucide="wallet" class="w-5 h-5"></i>
+            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+              <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-[#09090B] dark:bg-white flex items-center justify-center text-white dark:text-[#09090B] shadow-xs shrink-0">
+                <i data-lucide="wallet" class="w-4 h-4 sm:w-5 sm:h-5"></i>
               </div>
               <div>
-                <span class="text-lg font-bold tracking-tight text-[#09090B] dark:text-[#F4F4F5] flex items-center gap-1.5">
+                <span class="text-sm sm:text-lg font-bold tracking-tight text-[#09090B] dark:text-[#F4F4F5] flex items-center gap-1 sm:gap-1.5">
                   Budget Tracker
-                  <span class="text-[10px] font-semibold uppercase tracking-wider bg-[#F9F9F8] dark:bg-[#121214] text-[#71717A] dark:text-[#A1A1AA] px-2 py-0.5 rounded-full border border-[#E4E4E7] dark:border-[#27272A]">
+                  <span class="hidden md:inline-block text-[10px] font-semibold uppercase tracking-wider bg-[#F9F9F8] dark:bg-[#121214] text-[#71717A] dark:text-[#A1A1AA] px-1.5 py-0.5 rounded-full border border-[#E4E4E7] dark:border-[#27272A]">
                     Pro
                   </span>
                 </span>
-                <p class="text-xs text-[#71717A] dark:text-[#A1A1AA] hidden sm:block">Develop by Rey</p>
+                <p class="text-[11px] text-[#71717A] dark:text-[#A1A1AA] hidden sm:block">Develop by Rey</p>
               </div>
             </div>
 
             <!-- Action Controls & Status -->
-            <div class="flex items-center gap-2 sm:gap-3">
+            <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
               
               <!-- Indikator Status Sinkronisasi Cloud Interaktif -->
               ${syncBadgeMarkup}
@@ -159,9 +163,9 @@ export class Navbar {
                 id="btn-toggle-theme"
                 type="button"
                 title="Ganti ke mode ${isDark ? 'Siang' : 'Malam'}"
-                class="p-2 sm:px-2.5 sm:py-2 rounded-lg text-[#09090B] dark:text-[#F4F4F5] bg-[#F9F9F8] dark:bg-[#121214] hover:bg-[#E4E4E7] dark:hover:bg-[#27272A] border border-[#E4E4E7] dark:border-[#27272A] text-xs sm:text-sm font-medium transition-all cursor-pointer flex items-center gap-1"
+                class="p-1.5 sm:px-2.5 sm:py-2 rounded-lg text-[#09090B] dark:text-[#F4F4F5] bg-[#F9F9F8] dark:bg-[#121214] hover:bg-[#E4E4E7] dark:hover:bg-[#27272A] border border-[#E4E4E7] dark:border-[#27272A] text-xs sm:text-sm font-medium transition-colors cursor-pointer flex items-center gap-1 active:opacity-80"
               >
-                <i data-lucide="${isDark ? 'sun' : 'moon'}" class="w-4 h-4"></i>
+                <i data-lucide="${isDark ? 'sun' : 'moon'}" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
               </button>
 
               <!-- Tombol Sensor Mata (Eye / Eye-off) -->
@@ -169,13 +173,13 @@ export class Navbar {
                 id="btn-toggle-mask"
                 type="button"
                 title="${isMasked ? 'Tampilkan Saldo (Sensor Aktif)' : 'Sembunyikan Saldo (Sensor Nonaktif)'}"
-                class="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+                class="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors cursor-pointer active:opacity-80 ${
                   isMasked
                     ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 border border-amber-200 dark:border-amber-800'
                     : 'bg-[#F9F9F8] dark:bg-[#121214] text-[#09090B] dark:text-[#F4F4F5] hover:bg-[#E4E4E7] dark:hover:bg-[#27272A] border border-[#E4E4E7] dark:border-[#27272A]'
                 }"
               >
-                <i data-lucide="${isMasked ? 'eye-off' : 'eye'}" class="w-4 h-4 shrink-0"></i>
+                <i data-lucide="${isMasked ? 'eye-off' : 'eye'}" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0"></i>
                 <span class="hidden sm:inline font-medium">
                   ${isMasked ? 'Sensor Aktif' : 'Sensor Mati'}
                 </span>
@@ -186,22 +190,22 @@ export class Navbar {
                 id="btn-lock-session"
                 type="button"
                 title="Kunci sesi manual (Keamanan Fisik)"
-                class="p-2 sm:px-3 sm:py-2 rounded-lg text-[#09090B] dark:text-[#F4F4F5] bg-[#F9F9F8] dark:bg-[#121214] hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-black dark:hover:text-white border border-[#E4E4E7] dark:border-[#27272A] text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 cursor-pointer"
+                class="p-1.5 sm:px-3 sm:py-2 rounded-lg text-[#09090B] dark:text-[#F4F4F5] bg-[#F9F9F8] dark:bg-[#121214] hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-black dark:hover:text-white border border-[#E4E4E7] dark:border-[#27272A] text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5 cursor-pointer active:opacity-80"
               >
-                <i data-lucide="lock" class="w-4 h-4 shrink-0"></i>
+                <i data-lucide="lock" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0"></i>
                 <span class="hidden sm:inline">Kunci</span>
               </button>
 
               <!-- Divider -->
-              <div class="h-6 w-px bg-[#E4E4E7] dark:bg-[#27272A] mx-0.5 sm:mx-1"></div>
+              <div class="h-5 sm:h-6 w-px bg-[#E4E4E7] dark:bg-[#27272A] mx-0.5"></div>
 
               <!-- Status User / Tombol Login -->
               ${
                 isAuthenticated
                   ? `
-                <div class="flex items-center gap-1.5 sm:gap-2">
-                  <div class="flex items-center gap-2 p-1.5 sm:px-2.5 sm:py-1.5 bg-[#F9F9F8] dark:bg-[#121214] border border-[#E4E4E7] dark:border-[#27272A] rounded-lg">
-                    <div class="w-6 h-6 rounded-full bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] flex items-center justify-center font-bold text-xs shrink-0">
+                <div class="flex items-center gap-1 sm:gap-2">
+                  <div class="flex items-center gap-1.5 sm:gap-2 p-1 sm:px-2.5 sm:py-1.5 bg-[#F9F9F8] dark:bg-[#121214] border border-[#E4E4E7] dark:border-[#27272A] rounded-lg">
+                    <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] flex items-center justify-center font-bold text-[10px] sm:text-xs shrink-0">
                       ${user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
                     </div>
                     <span class="hidden sm:inline text-xs sm:text-sm font-semibold text-[#09090B] dark:text-[#F4F4F5] max-w-[100px] sm:max-w-[140px] truncate">
@@ -213,9 +217,9 @@ export class Navbar {
                     id="btn-navbar-logout"
                     type="button"
                     title="Keluar dari sesi"
-                    class="p-2 rounded-lg text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                    class="p-1.5 sm:p-2 rounded-lg text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer active:opacity-80"
                   >
-                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <i data-lucide="log-out" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
                   </button>
                 </div>
               `
@@ -223,9 +227,9 @@ export class Navbar {
                 <button
                   id="btn-navbar-login"
                   type="button"
-                  class="flex items-center gap-1.5 p-2 sm:px-3.5 sm:py-2 rounded-lg bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] text-xs sm:text-sm font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
+                  class="flex items-center gap-1.5 p-1.5 sm:px-3.5 sm:py-2 rounded-lg bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer active:opacity-80"
                 >
-                  <i data-lucide="log-in" class="w-4 h-4 shrink-0"></i>
+                  <i data-lucide="log-in" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0"></i>
                   <span class="hidden sm:inline">Masuk</span>
                 </button>
               `

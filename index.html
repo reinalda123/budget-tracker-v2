@@ -28,13 +28,13 @@
     <!-- Pustaka html2pdf.js CDN untuk Ekspor Laporan PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   </head>
-  <body class="bg-[#F9F9F8] dark:bg-[#09090B] text-[#09090B] dark:text-[#F4F4F5] antialiased min-h-screen transition-colors duration-300 ease-in-out">
-    <div id="app" class="min-h-screen w-full bg-[#F9F9F8] dark:bg-[#09090B] text-[#09090B] dark:text-[#F4F4F5] flex flex-col transition-colors duration-300 ease-in-out">
+  <body class="bg-[#F9F9F8] dark:bg-[#09090B] text-[#09090B] dark:text-[#F4F4F5] antialiased min-h-screen transition-colors duration-200 ease-in-out overflow-x-hidden w-full max-w-full">
+    <div id="app" class="min-h-screen w-full max-w-full bg-[#F9F9F8] dark:bg-[#09090B] text-[#09090B] dark:text-[#F4F4F5] flex flex-col transition-colors duration-200 ease-in-out overflow-x-hidden">
       <!-- Wadah Header Navigasi -->
       <header id="navbar-root" class="w-full"></header>
 
       <!-- Wadah Konten Dashboard Dinamis berdasarkan activeTab -->
-      <main id="dashboard-root" class="w-full flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28"></main>
+      <main id="dashboard-root" class="w-full flex-1 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-6 pb-28"></main>
 
       <!-- Wadah Floating Action Button (FAB) -->
       <aside id="fab-root"></aside>

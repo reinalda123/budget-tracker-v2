@@ -165,7 +165,7 @@ export class CalendarView {
               id="btn-prev-month"
               type="button"
               title="Bulan sebelumnya"
-              class="p-2 rounded-lg text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-white dark:hover:bg-[#121214] transition-all cursor-pointer active:scale-95 shadow-2xs"
+              class="p-2 rounded-lg text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-white dark:hover:bg-[#121214] transition-colors cursor-pointer active:opacity-80 shadow-2xs"
             >
               <i data-lucide="chevron-left" class="w-4 h-4"></i>
             </button>
@@ -173,7 +173,7 @@ export class CalendarView {
               id="btn-next-month"
               type="button"
               title="Bulan berikutnya"
-              class="p-2 rounded-lg text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-white dark:hover:bg-[#121214] transition-all cursor-pointer active:scale-95 shadow-2xs"
+              class="p-2 rounded-lg text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-white dark:hover:bg-[#121214] transition-colors cursor-pointer active:opacity-80 shadow-2xs"
             >
               <i data-lucide="chevron-right" class="w-4 h-4"></i>
             </button>
@@ -201,8 +201,8 @@ export class CalendarView {
             : ''
         }
 
-        <!-- Grid Kalender (Minggu - Sabtu) -->
-        <div class="space-y-2">
+        <!-- Grid Kalender (Minggu - Sabtu) dengan Transisi Halus -->
+        <div class="space-y-2 calendar-grid-enter">
           <!-- Nama Hari -->
           <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-[#71717A] dark:text-[#A1A1AA] py-1">
             ${weekDays.map((d, i) => `<div class="${i === 0 ? 'text-rose-500' : ''}">${d}</div>`).join('')}
@@ -229,7 +229,7 @@ export class CalendarView {
 
                 if (isSelected) {
                   cellClass +=
-                    'bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] font-extrabold shadow-sm scale-105 z-10';
+                    'bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] font-extrabold shadow-sm ring-2 ring-zinc-900 dark:ring-white z-10';
                 } else if (isToday) {
                   cellClass +=
                     'border-2 border-[#09090B] dark:border-white bg-[#F9F9F8] dark:bg-[#121214] font-bold text-[#09090B] dark:text-white';

@@ -43,18 +43,18 @@ export class BottomNav {
 
   /**
    * Menghubungkan event listener klik tab dan tombol quick add,
-   * serta efek whileTap (scale: 0.94) untuk responsivitas sentuhan fisik.
+   * dengan respon visual efek kaca halus (tanpa efek fisik membal/scale).
    */
   attachEvents() {
     // Tombol Tab Navigasi
     const tabButtons = this.container.querySelectorAll('[data-nav-tab]');
     tabButtons.forEach((btn) => {
-      // Interaksi tap fisik: whileTap={{ scale: 0.94 }}
+      // Respon visual halus efek kaca: opacity feedback
       const handlePointerDown = () => {
-        btn.style.transform = 'scale(0.94)';
+        btn.style.opacity = '0.7';
       };
       const handlePointerUp = () => {
-        btn.style.transform = '';
+        btn.style.opacity = '';
       };
 
       btn.addEventListener('pointerdown', handlePointerDown);
@@ -72,14 +72,14 @@ export class BottomNav {
       });
     });
 
-    // Tombol Quick Add Tengah (+) dengan whileTap scale: 0.94
+    // Tombol Quick Add Tengah (+) dengan respon visual halus
     const quickAddBtn = this.container.querySelector('#btn-bottom-quick-add');
     if (quickAddBtn) {
       const handleQuickDown = () => {
-        quickAddBtn.style.transform = 'scale(0.94)';
+        quickAddBtn.style.opacity = '0.8';
       };
       const handleQuickUp = () => {
-        quickAddBtn.style.transform = '';
+        quickAddBtn.style.opacity = '';
       };
 
       quickAddBtn.addEventListener('pointerdown', handleQuickDown);
@@ -180,7 +180,7 @@ export class BottomNav {
           <button
             type="button"
             data-nav-tab="home"
-            class="relative z-10 flex flex-col items-center justify-center py-1.5 px-3.5 sm:px-4 rounded-full transition-transform duration-100 ease-out active:scale-[0.94] cursor-pointer select-none ${
+            class="relative z-10 flex flex-col items-center justify-center py-1.5 px-3.5 sm:px-4 rounded-full transition-colors duration-100 ease-out active:opacity-75 cursor-pointer select-none ${
               activeTab === 'home'
                 ? 'text-[#09090B] dark:text-[#F4F4F5] font-bold'
                 : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5] font-medium'
@@ -194,7 +194,7 @@ export class BottomNav {
           <button
             type="button"
             data-nav-tab="wallets"
-            class="relative z-10 flex flex-col items-center justify-center py-1.5 px-3.5 sm:px-4 rounded-full transition-transform duration-100 ease-out active:scale-[0.94] cursor-pointer select-none ${
+            class="relative z-10 flex flex-col items-center justify-center py-1.5 px-3.5 sm:px-4 rounded-full transition-colors duration-100 ease-out active:opacity-75 cursor-pointer select-none ${
               activeTab === 'wallets'
                 ? 'text-[#09090B] dark:text-[#F4F4F5] font-bold'
                 : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5] font-medium'
@@ -210,7 +210,7 @@ export class BottomNav {
               id="btn-bottom-quick-add"
               type="button"
               title="Catat Transaksi Cepat"
-              class="w-13 h-13 rounded-full bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] shadow-md flex items-center justify-center transition-transform duration-100 ease-out hover:scale-105 active:scale-[0.94] cursor-pointer ring-4 ring-[#F9F9F8] dark:ring-[#09090B]"
+              class="w-13 h-13 rounded-full bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] shadow-md flex items-center justify-center transition-colors duration-100 ease-out active:opacity-85 cursor-pointer ring-4 ring-[#F9F9F8] dark:ring-[#09090B]"
             >
               <i data-lucide="plus" class="w-6 h-6"></i>
             </button>
@@ -220,7 +220,7 @@ export class BottomNav {
           <button
             type="button"
             data-nav-tab="activity"
-            class="relative z-10 flex flex-col items-center justify-center py-1.5 px-3.5 sm:px-4 rounded-full transition-transform duration-100 ease-out active:scale-[0.94] cursor-pointer select-none ${
+            class="relative z-10 flex flex-col items-center justify-center py-1.5 px-3.5 sm:px-4 rounded-full transition-colors duration-100 ease-out active:opacity-75 cursor-pointer select-none ${
               activeTab === 'activity'
                 ? 'text-[#09090B] dark:text-[#F4F4F5] font-bold'
                 : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5] font-medium'
@@ -234,7 +234,7 @@ export class BottomNav {
           <button
             type="button"
             data-nav-tab="report"
-            class="relative z-10 flex flex-col items-center justify-center py-1.5 px-3.5 sm:px-4 rounded-full transition-transform duration-100 ease-out active:scale-[0.94] cursor-pointer select-none ${
+            class="relative z-10 flex flex-col items-center justify-center py-1.5 px-3.5 sm:px-4 rounded-full transition-colors duration-100 ease-out active:opacity-75 cursor-pointer select-none ${
               activeTab === 'report'
                 ? 'text-[#09090B] dark:text-[#F4F4F5] font-bold'
                 : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5] font-medium'

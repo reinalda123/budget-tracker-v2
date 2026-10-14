@@ -248,7 +248,7 @@ export function openTransactionModal(options = {}) {
             <button
               id="btn-save-verification"
               type="submit"
-              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:scale-98 flex items-center gap-2"
+              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center gap-2"
             >
               <i data-lucide="check" class="w-4 h-4"></i>
               <span>Simpan Transaksi</span>
@@ -506,7 +506,7 @@ export function openScanReceiptModal(options = {}) {
               <button
                 id="btn-trigger-camera"
                 type="button"
-                class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-[#E4E4E7] dark:border-[#27272A] hover:border-[#09090B] dark:hover:border-white bg-[#FFFFFF] dark:bg-[#121214] hover:bg-zinc-50 dark:hover:bg-zinc-900 text-[#09090B] dark:text-[#F4F4F5] transition-all duration-200 cursor-pointer group active:scale-98"
+                class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-[#E4E4E7] dark:border-[#27272A] hover:border-[#09090B] dark:hover:border-white bg-[#FFFFFF] dark:bg-[#121214] hover:bg-zinc-50 dark:hover:bg-zinc-900 text-[#09090B] dark:text-[#F4F4F5] transition-all duration-200 cursor-pointer group active:opacity-85"
               >
                 <div class="w-14 h-14 rounded-2xl bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] flex items-center justify-center group-hover:scale-105 transition-transform">
                   <i data-lucide="camera" class="w-7 h-7"></i>
@@ -532,7 +532,7 @@ export function openScanReceiptModal(options = {}) {
               <button
                 id="btn-trigger-gallery"
                 type="button"
-                class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-[#E4E4E7] dark:border-[#27272A] hover:border-[#09090B] dark:hover:border-white bg-[#FFFFFF] dark:bg-[#121214] hover:bg-zinc-50 dark:hover:bg-zinc-900 text-[#09090B] dark:text-[#F4F4F5] transition-all duration-200 cursor-pointer group active:scale-98"
+                class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-[#E4E4E7] dark:border-[#27272A] hover:border-[#09090B] dark:hover:border-white bg-[#FFFFFF] dark:bg-[#121214] hover:bg-zinc-50 dark:hover:bg-zinc-900 text-[#09090B] dark:text-[#F4F4F5] transition-all duration-200 cursor-pointer group active:opacity-85"
               >
                 <div class="w-14 h-14 rounded-2xl bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] flex items-center justify-center group-hover:scale-105 transition-transform">
                   <i data-lucide="image" class="w-7 h-7"></i>
@@ -716,7 +716,7 @@ export function openScanReceiptModal(options = {}) {
               <button
                 id="btn-capture-photo"
                 type="button"
-                class="flex-1 py-2.5 px-4 bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm rounded-xl flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer"
+                class="flex-1 py-2.5 px-4 bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm rounded-xl flex items-center justify-center gap-2 transition active:opacity-85 cursor-pointer"
               >
                 <i data-lucide="camera" class="w-4 h-4"></i>
                 <span>Ambil Foto</span>
@@ -856,7 +856,7 @@ export function openLoginModal(options = {}) {
             <button
               type="submit"
               id="btn-auth-submit"
-              class="w-full py-2.5 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 active:scale-98 transition shadow-xs cursor-pointer flex items-center justify-center gap-2"
+              class="w-full py-2.5 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 active:opacity-85 transition shadow-xs cursor-pointer flex items-center justify-center gap-2"
             >
               <i data-lucide="log-in" class="w-4 h-4"></i>
               <span>Masuk</span>
@@ -1006,7 +1006,7 @@ export function openTransferModal(options = {}) {
             </button>
             <button
               type="submit"
-              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:scale-98"
+              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85"
             >
               Kirim Transfer
             </button>
@@ -1100,7 +1100,7 @@ export function openEditBudgetModal(category, options = {}) {
             </button>
             <button
               type="submit"
-              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:scale-98"
+              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85"
             >
               Terapkan
             </button>
@@ -1215,7 +1215,7 @@ export function openAddCategoryModal(options = {}) {
             </button>
             <button
               type="submit"
-              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:scale-98"
+              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85"
             >
               Simpan Pos
             </button>
@@ -1306,7 +1306,7 @@ export function openEditWalletNameModal(wallet, options = {}) {
             </button>
             <button
               type="submit"
-              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:scale-98"
+              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85"
             >
               Simpan Perubahan
             </button>
@@ -1426,7 +1426,7 @@ export function openAddAccountModal(options = {}) {
             </button>
             <button
               type="submit"
-              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:scale-98"
+              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85"
             >
               Simpan Rekening
             </button>
@@ -1540,7 +1540,7 @@ export function openConfirmDeleteTransactionModal(options = {}) {
           <button
             id="btn-confirm-delete"
             type="button"
-            class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm transition-all cursor-pointer active:scale-98 flex items-center gap-2"
+            class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center gap-2"
           >
             <i data-lucide="trash-2" class="w-4 h-4"></i>
             <span id="btn-confirm-delete-text">Ya, Hapus</span>
@@ -1594,6 +1594,228 @@ export function openConfirmDeleteTransactionModal(options = {}) {
     }
   });
 }
+
+/**
+ * Membuka modal konfirmasi hapus kartu/rekening bank kustom in-app
+ * @param {Object} options
+ * @param {Object} options.account - Data rekening yang akan dihapus
+ * @param {() => Promise<void> | void} options.onConfirm - Callback saat tombol konfirmasi ditekan
+ * @param {() => void} [options.onCancel] - Callback saat dibatalkan
+ */
+export function openConfirmDeleteWalletModal(options = {}) {
+  const root = getModalRoot();
+  if (!root) return;
+
+  const account = options.account || {};
+  const accountName = account.name || 'Rekening';
+  const balanceFormatted = formatRupiah(account.balance || 0);
+
+  root.innerHTML = `
+    <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+      <div class="w-full max-w-sm rounded-2xl bg-[#FFFFFF] dark:bg-[#121214] border border-[#E4E4E7] dark:border-[#27272A] p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
+        
+        <!-- Header & Ikon Peringatan -->
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <i data-lucide="trash-2" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-[#09090B] dark:text-[#F4F4F5] tracking-tight">Hapus Rekening?</h3>
+            <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">Tindakan ini tidak dapat dibatalkan</p>
+          </div>
+        </div>
+
+        <!-- Rincian Rekening -->
+        <div class="p-3.5 rounded-xl bg-[#F9F9F8] dark:bg-[#09090B] border border-[#E4E4E7] dark:border-[#27272A] space-y-2 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="text-[#71717A] dark:text-[#A1A1AA]">Nama Rekening:</span>
+            <span class="font-bold text-[#09090B] dark:text-[#F4F4F5] text-right">${accountName}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[#71717A] dark:text-[#A1A1AA]">Nomor Rekening:</span>
+            <span class="font-mono text-[#71717A] dark:text-[#A1A1AA]">${account.accountNumber || '-'}</span>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-[#E4E4E7] dark:border-[#27272A] text-sm">
+            <span class="font-semibold text-[#71717A] dark:text-[#A1A1AA]">Saldo Terakhir:</span>
+            <span class="font-extrabold text-[#09090B] dark:text-[#F4F4F5]">
+              ${balanceFormatted}
+            </span>
+          </div>
+        </div>
+
+        <p class="text-xs text-rose-600 dark:text-rose-400/90 leading-relaxed bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20">
+          * Seluruh pencatatan yang menggunakan kartu/rekening ini tetap tersimpan di riwayat.
+        </p>
+
+        <!-- Tombol Aksi -->
+        <div class="pt-2 flex items-center justify-end gap-3 border-t border-[#E4E4E7] dark:border-[#27272A]">
+          <button
+            id="btn-cancel-delete-wallet"
+            type="button"
+            class="px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer active:opacity-80"
+          >
+            Batal
+          </button>
+          <button
+            id="btn-confirm-delete-wallet"
+            type="button"
+            class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm transition-colors cursor-pointer active:opacity-85 flex items-center gap-2"
+          >
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            <span id="btn-confirm-delete-wallet-text">Ya, Hapus</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  renderIcons(root);
+
+  const handleCancel = () => {
+    closeModal();
+    if (typeof options.onCancel === 'function') {
+      options.onCancel();
+    }
+  };
+
+  root.querySelector('#btn-cancel-delete-wallet')?.addEventListener('click', handleCancel);
+  root.querySelector('#modal-backdrop')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-backdrop') {
+      handleCancel();
+    }
+  });
+
+  const confirmBtn = root.querySelector('#btn-confirm-delete-wallet');
+  let isDeleting = false;
+
+  confirmBtn?.addEventListener('click', async () => {
+    if (isDeleting) return;
+    isDeleting = true;
+
+    const btnText = root.querySelector('#btn-confirm-delete-wallet-text');
+    if (btnText) btnText.textContent = 'Menghapus...';
+    confirmBtn.disabled = true;
+    confirmBtn.classList.add('opacity-70', 'cursor-not-allowed');
+
+    try {
+      if (typeof options.onConfirm === 'function') {
+        await options.onConfirm();
+      }
+      closeModal();
+    } catch (err) {
+      console.error('[openConfirmDeleteWalletModal] Gagal menghapus rekening:', err);
+      alert('Gagal menghapus rekening: ' + (err.message || err));
+      isDeleting = false;
+      confirmBtn.disabled = false;
+      confirmBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+      if (btnText) btnText.textContent = 'Ya, Hapus';
+    }
+  });
+}
+
+/**
+ * Membuka modal konfirmasi hapus pos anggaran kustom in-app
+ * @param {Object} options
+ * @param {Object} options.category - Data kategori yang akan dihapus
+ * @param {() => Promise<void> | void} options.onConfirm - Callback saat tombol konfirmasi ditekan
+ * @param {() => void} [options.onCancel] - Callback saat dibatalkan
+ */
+export function openConfirmDeleteCategoryModal(options = {}) {
+  const root = getModalRoot();
+  if (!root) return;
+
+  const category = options.category || {};
+  const catName = category.name || 'Pos Anggaran';
+
+  root.innerHTML = `
+    <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+      <div class="w-full max-w-sm rounded-2xl bg-[#FFFFFF] dark:bg-[#121214] border border-[#E4E4E7] dark:border-[#27272A] p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150">
+        
+        <!-- Header & Ikon Peringatan -->
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <i data-lucide="trash-2" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-[#09090B] dark:text-[#F4F4F5] tracking-tight">Hapus Pos Anggaran?</h3>
+            <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">Tindakan ini tidak dapat dibatalkan</p>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-[#F9F9F8] dark:bg-[#09090B] border border-[#E4E4E7] dark:border-[#27272A] text-xs">
+          <p class="text-[#71717A] dark:text-[#A1A1AA]">
+            Apakah Anda yakin ingin menghapus pos anggaran <strong class="text-[#09090B] dark:text-[#F4F4F5]">"${catName}"</strong>?
+          </p>
+        </div>
+
+        <!-- Tombol Aksi -->
+        <div class="pt-2 flex items-center justify-end gap-3 border-t border-[#E4E4E7] dark:border-[#27272A]">
+          <button
+            id="btn-cancel-delete-cat"
+            type="button"
+            class="px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer active:opacity-80"
+          >
+            Batal
+          </button>
+          <button
+            id="btn-confirm-delete-cat"
+            type="button"
+            class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm transition-colors cursor-pointer active:opacity-85 flex items-center gap-2"
+          >
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            <span id="btn-confirm-delete-cat-text">Ya, Hapus</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  renderIcons(root);
+
+  const handleCancel = () => {
+    closeModal();
+    if (typeof options.onCancel === 'function') {
+      options.onCancel();
+    }
+  };
+
+  root.querySelector('#btn-cancel-delete-cat')?.addEventListener('click', handleCancel);
+  root.querySelector('#modal-backdrop')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-backdrop') {
+      handleCancel();
+    }
+  });
+
+  const confirmBtn = root.querySelector('#btn-confirm-delete-cat');
+  let isDeleting = false;
+
+  confirmBtn?.addEventListener('click', async () => {
+    if (isDeleting) return;
+    isDeleting = true;
+
+    const btnText = root.querySelector('#btn-confirm-delete-cat-text');
+    if (btnText) btnText.textContent = 'Menghapus...';
+    confirmBtn.disabled = true;
+    confirmBtn.classList.add('opacity-70', 'cursor-not-allowed');
+
+    try {
+      if (typeof options.onConfirm === 'function') {
+        await options.onConfirm();
+      }
+      closeModal();
+    } catch (err) {
+      console.error('[openConfirmDeleteCategoryModal] Gagal menghapus pos anggaran:', err);
+      alert('Gagal menghapus pos anggaran: ' + (err.message || err));
+      isDeleting = false;
+      confirmBtn.disabled = false;
+      confirmBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+      if (btnText) btnText.textContent = 'Ya, Hapus';
+    }
+  });
+}
+
 
 
 

@@ -134,7 +134,7 @@ export class ReportView {
           <button
             id="btn-download-pdf"
             type="button"
-            class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] active:scale-95 text-white dark:text-[#09090B] text-xs sm:text-sm font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+            class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] active:opacity-80 text-white dark:text-[#09090B] text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <i data-lucide="download" class="w-4 h-4"></i>
             <span id="btn-download-pdf-text">Unduh PDF</span>
@@ -149,7 +149,7 @@ export class ReportView {
               <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> Total Pemasukan
             </span>
             <p class="text-lg sm:text-xl font-extrabold text-emerald-700 dark:text-emerald-400">
-              + ${maskedIncome}
+              + <span class="privacy-mask">${maskedIncome}</span>
             </p>
           </div>
 
@@ -159,7 +159,7 @@ export class ReportView {
               <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> Total Pengeluaran
             </span>
             <p class="text-lg sm:text-xl font-extrabold text-rose-700 dark:text-rose-400">
-              - ${maskedExpense}
+              - <span class="privacy-mask">${maskedExpense}</span>
             </p>
           </div>
 
@@ -169,7 +169,7 @@ export class ReportView {
               Arus Kas Bersih
             </span>
             <p class="text-lg sm:text-xl font-extrabold ${netSavings >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}">
-              ${netSavings < 0 ? '- ' : '+ '}${maskedNet}
+              ${netSavings < 0 ? '- ' : '+ '}<span class="privacy-mask">${maskedNet}</span>
             </p>
           </div>
         </div>
@@ -188,7 +188,7 @@ export class ReportView {
                   Pengeluaran
                 </span>
                 <span class="text-base sm:text-lg font-extrabold text-slate-800 dark:text-slate-100 mt-0.5">
-                  ${maskedExpense}
+                  <span class="privacy-mask">${maskedExpense}</span>
                 </span>
               </div>
             </div>
