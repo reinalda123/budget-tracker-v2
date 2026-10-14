@@ -168,7 +168,9 @@ export async function login(email, password) {
 }
 
 /**
- * Menghapus sesi aktif dan token dari localStorage serta mereset store aplikasi.
+ * Menghapus sesi aktif dan token dari localStorage.
+ * HANYA menghapus token otentikasi/sesi (JWT) dan data sesi user.
+ * Cache transaksi dan data lokal tetap dipertahankan agar tidak terjadi data loss.
  */
 export function logout() {
   currentToken = null;
@@ -181,7 +183,11 @@ export function logout() {
     console.warn('[AuthService] Gagal menghapus localStorage:', error);
   }
 
-  store.resetState();
+  // HANYA update state sesi tanpa menghapus cache transaksi/akun lokal
+  store.setState({
+    token: null,
+    user: null,
+  });
 }
 
 // Inisialisasi awal pemulihan sesi saat modul dimuat

@@ -6,12 +6,34 @@ const THEME_PREF_KEY = 'theme';
 const LOCAL_CACHE_KEY = 'budget_tracker_local_cache';
 
 /**
+ * Mendapatkan kunci localStorage cache yang terisolasi per user jika user telah login.
+ * @param {string} [userId]
+ * @returns {string}
+ */
+function getCacheKey(userId) {
+  if (userId) return `${LOCAL_CACHE_KEY}_${userId}`;
+  try {
+    const userStr = localStorage.getItem('budget_tracker_user');
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      if (u?.id) return `${LOCAL_CACHE_KEY}_${u.id}`;
+    }
+  } catch {}
+  return LOCAL_CACHE_KEY;
+}
+
+/**
  * Membaca data tersimpan (accounts, categories, transactions) dari cache localStorage.
+ * @param {string} [userId]
  * @returns {{ accounts: Array|null, categories: Array|null, transactions: Array|null }}
  */
-function getInitialLocalData() {
+function getInitialLocalData(userId) {
   try {
-    const saved = localStorage.getItem(LOCAL_CACHE_KEY);
+    const key = getCacheKey(userId);
+    let saved = localStorage.getItem(key);
+    if (!saved && key !== LOCAL_CACHE_KEY) {
+      saved = localStorage.getItem(LOCAL_CACHE_KEY);
+    }
     if (saved) {
       const parsed = JSON.parse(saved);
       const isMockTx = (t) => t && (t.id === 'tx-1' || t.id === 'tx-2');
@@ -36,6 +58,7 @@ function getInitialLocalData() {
 
 /**
  * Menyimpan data accounts, categories, dan transactions ke cache localStorage secara langsung.
+ * Menyimpan ke cache spesifik pengguna jika tersedia untuk isolasi data maksimal.
  * @param {Object} state
  */
 function saveLocalCache(state) {
@@ -45,7 +68,11 @@ function saveLocalCache(state) {
       categories: state.categories || [],
       transactions: state.transactions || [],
     };
-    localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(payload));
+    const userSpecificKey = getCacheKey(state.user?.id);
+    localStorage.setItem(userSpecificKey, JSON.stringify(payload));
+    if (userSpecificKey !== LOCAL_CACHE_KEY) {
+      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(payload));
+    }
   } catch (err) {
     console.warn('Gagal menyimpan cache lokal ke localStorage:', err);
   }
@@ -149,6 +176,13 @@ export function scheduleCloudSync(delayMs = 1000) {
 }
 
 /**
+ * Mengatur ulang flag sinkronisasi cloud agar sesi baru mengambil ulang data segar dari D1.
+ */
+export function resetCloudSyncFlag() {
+  hasPulledFromCloud = false;
+}
+
+/**
  * Memicu sinkronisasi langsung (immediate sync) ke Cloudflare Worker D1.
  * Dapat dipanggil manual lewat klik tombol status di Navbar atau otomatis saat reconnect / initial load.
  */
@@ -164,6 +198,12 @@ export async function triggerImmediateSync() {
     return;
   }
 
+  // Cek apakah ada token aktif sebelum mencoba sinkronisasi
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('budget_tracker_jwt_token') : null;
+  if (!token) {
+    return;
+  }
+
   // Jika sedang sinkronisasi, jadwalkan satu kali lagi setelah selesai
   if (isSyncing) {
     pendingSync = true;
@@ -174,7 +214,7 @@ export async function triggerImmediateSync() {
   setState({ syncStatus: 'syncing' });
 
   try {
-    // Jika belum pernah berhasil mengambil data cloud, coba pull data terlebih dahulu
+    // Jika belum pernah berhasil mengambil data cloud untuk sesi ini, coba pull data terlebih dahulu
     if (!hasPulledFromCloud) {
       const cloudData = await fetchCloudData();
       const hasWallets = Array.isArray(cloudData.wallets) && cloudData.wallets.length > 0;
@@ -229,7 +269,7 @@ export async function triggerImmediateSync() {
           }
         });
       } else {
-        // Jika database D1 cloud masih kosong, push data lokal awal ke D1
+        // Jika database D1 cloud masih kosong, push data lokal awal milik user ini ke D1
         if (currentState.accounts.length > 0 || currentState.transactions.length > 0) {
           await pushCloudData(currentState);
         }
@@ -274,8 +314,11 @@ export async function initCloudSync() {
     });
   }
 
-  // Jalankan sinkronisasi awal
-  triggerImmediateSync();
+  // Jalankan sinkronisasi awal hanya jika ada token
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('budget_tracker_jwt_token') : null;
+  if (token) {
+    triggerImmediateSync();
+  }
 }
 
 /**
@@ -291,6 +334,33 @@ export function setState(updater) {
     ...updates,
   };
 
+  // Deteksi perubahan user / token sesi
+  const userChanged =
+    updates &&
+    (updates.user !== undefined || updates.token !== undefined) &&
+    (updates.user?.id !== previousState.user?.id || updates.token !== previousState.token);
+
+  if (userChanged) {
+    hasPulledFromCloud = false;
+    // Jika login pengguna baru, muat cache milik pengguna tersebut
+    if (updates.user?.id) {
+      const userCache = getInitialLocalData(updates.user.id);
+      if (userCache.accounts || userCache.transactions || userCache.categories) {
+        currentState.accounts = userCache.accounts || [];
+        currentState.transactions = userCache.transactions || [];
+        currentState.categories = userCache.categories || [];
+      } else {
+        // Pengguna baru tanpa cache lokal: mulai dengan state bersih untuk isolasi penuh
+        currentState.accounts = [];
+        currentState.transactions = [];
+        currentState.categories = [];
+      }
+    }
+    if (updates.token) {
+      triggerImmediateSync();
+    }
+  }
+
   // Simpan ke localStorage & jadwalkan background sync jika ada mutasi data akun, kategori, atau transaksi
   const hasDataMutation =
     updates &&
@@ -300,7 +370,7 @@ export function setState(updater) {
 
   if (hasDataMutation) {
     saveLocalCache(currentState);
-    scheduleCloudSync(1000);
+    scheduleCloudSync(300);
   }
 
   // Simpan preferensi UI jika isMasked diperbarui
@@ -351,13 +421,11 @@ export function subscribe(listener) {
 }
 
 /**
- * Mengembalikan state ke kondisi awal (misal saat logout).
+ * Mengembalikan state sesi ke kondisi awal (misal saat logout).
+ * HANYA mereset status sesi dan UI tanpa menghapus cache transaksi/akun lokal.
  */
 export function resetState() {
   setState({
-    accounts: [],
-    categories: [],
-    transactions: [],
     selectedMonth: new Date().toISOString().slice(0, 7),
     selectedDate: null,
     isMasked: getInitialMaskedPreference(),
@@ -678,6 +746,7 @@ export const store = {
   applyTheme,
   scheduleCloudSync,
   triggerImmediateSync,
+  resetCloudSyncFlag,
   initCloudSync,
 };
 

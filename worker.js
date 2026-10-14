@@ -1,5 +1,6 @@
 // worker.js
 // Cloudflare Worker REST API untuk Sinkronisasi Local-First Budget Tracker dengan Cloudflare D1 & Autentikasi JWT
+// Dilengkapi Isolasi Multi-User KETAT, Validasi Koneksi D1 Riil, dan Konfirmasi Persistensi Remote.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -204,7 +205,7 @@ async function verifyJWT(token, secretKey) {
  * Middleware helper untuk validasi Bearer Token JWT
  * @param {Request} request
  * @param {Object} env
- * @returns {Promise<Object | null>} User payload ({ id, email }) jika valid, null jika tidak
+ * @returns {Promise<Object | null>} User payload ({ id, userId, email }) jika valid, null jika tidak
  */
 async function authenticateRequest(request, env) {
   const authHeader = request.headers.get('Authorization') || '';
@@ -213,7 +214,17 @@ async function authenticateRequest(request, env) {
   }
   const token = authHeader.slice(7).trim();
   const secretKey = env.JWT_SECRET || DEFAULT_DEV_JWT_SECRET;
-  return await verifyJWT(token, secretKey);
+  const payload = await verifyJWT(token, secretKey);
+  if (!payload) return null;
+
+  const userId = payload.userId || payload.id || payload.sub;
+  if (!userId) return null;
+
+  return {
+    ...payload,
+    id: userId,
+    userId: userId,
+  };
 }
 
 // ==========================================
@@ -240,32 +251,63 @@ export default {
     const pathname = url.pathname;
 
     try {
-      // 2. Health check endpoint (Root)
-      if (pathname === '/' || pathname === '/api') {
+      // ===================================================================
+      // 2. Health & Status Check Endpoint (Validasi Riil Koneksi Database D1)
+      // ===================================================================
+      if (pathname === '/' || pathname === '/api' || pathname === '/api/health' || pathname === '/api/status') {
+        let dbStatus = 'disconnected';
+        let dbPingMs = null;
+        let dbError = null;
+
+        if (env.DB) {
+          const startPing = Date.now();
+          try {
+            // Jalankan query riil ke Cloudflare D1 untuk validasi konektivitas nyata
+            const pingRes = await env.DB.prepare('SELECT 1 as healthy').first();
+            if (pingRes && pingRes.healthy === 1) {
+              dbStatus = 'healthy';
+              dbPingMs = Date.now() - startPing;
+            } else {
+              dbStatus = 'degraded';
+            }
+          } catch (err) {
+            dbStatus = 'error';
+            dbError = err.message;
+          }
+        }
+
+        const isHealthy = dbStatus === 'healthy';
         return jsonResponse({
           name: 'Budget Tracker Cloudflare D1 API',
           version: '2.0.0',
-          status: 'online',
-          database: env.DB ? 'D1 Bound' : 'No DB Binding',
+          status: isHealthy ? 'online' : (dbStatus === 'degraded' ? 'degraded' : 'offline'),
+          database: {
+            status: dbStatus,
+            pingMs: dbPingMs,
+            error: dbError,
+            type: 'Cloudflare D1',
+          },
           auth: 'JWT (Web Crypto PBKDF2 + HMAC-SHA256)',
           jwtConfigured: Boolean(env.JWT_SECRET),
           gemini: env.GEMINI_API_KEY ? 'Configured' : 'Not Configured',
+          timestamp: new Date().toISOString(),
           endpoints: {
+            health: '/api/health (GET)',
             login: '/api/login (POST)',
+            transactions: '/api/transactions (POST, PUT, DELETE - Protected)',
             sync: '/api/sync (GET, POST - Protected)',
             scanReceipt: '/api/scan-receipt (POST - Protected)',
-            deleteTransaction: '/api/transactions/:id (DELETE - Protected)',
           },
-        });
+        }, isHealthy ? 200 : 503);
       }
 
       // ===================================================================
-      // Endpoint /api/register: Dinonaktifkan (Single-User Private System)
+      // Endpoint /api/register: Dinonaktifkan Publik (Gunakan CLI create-user.cjs)
       // ===================================================================
       if (pathname === '/api/register') {
         return jsonResponse({
           success: false,
-          error: 'Pendaftaran akun publik dinonaktifkan. Sistem ini bersifat privat (Single-User). Gunakan skrip CLI untuk menambah user.',
+          error: 'Pendaftaran akun publik dinonaktifkan. Gunakan skrip CLI `node scripts/create-user.cjs` untuk mendaftarkan akun baru ke Cloudflare D1.',
         }, 403);
       }
 
@@ -281,20 +323,20 @@ export default {
         }
 
         const body = await request.json().catch(() => ({}));
-        const email = String(body.email || body.username || '').trim().toLowerCase();
+        const rawEmail = String(body.email || body.username || '').trim();
         const password = String(body.password || '');
 
-        if (!email || !password) {
+        if (!rawEmail || !password) {
           return jsonResponse({
             success: false,
             error: 'Email dan kata sandi wajib diisi.',
           }, 400);
         }
 
-        // Cari user di database D1
+        // Pencarian user Case-Insensitive (LOWER(TRIM(email)) = LOWER(TRIM(?)))
         const user = await env.DB.prepare(
-          'SELECT id, email, password_hash, salt FROM users WHERE email = ?'
-        ).bind(email).first();
+          'SELECT id, email, password_hash, salt FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))'
+        ).bind(rawEmail).first();
 
         if (!user) {
           return jsonResponse({
@@ -303,7 +345,7 @@ export default {
           }, 401);
         }
 
-        // Verifikasi password hash
+        // Verifikasi password hash via PBKDF2 Web Crypto API
         const isMatch = await verifyPassword(password, user.salt, user.password_hash);
         if (!isMatch) {
           return jsonResponse({
@@ -312,13 +354,14 @@ export default {
           }, 401);
         }
 
-        // Buat token JWT berstandar HMAC-SHA256 (Masa aktif 7 hari)
+        // Buat token JWT berstandar HMAC-SHA256 (Masa aktif 7 hari) dengan userId unik dan valid
         const secretKey = env.JWT_SECRET || DEFAULT_DEV_JWT_SECRET;
         const now = Math.floor(Date.now() / 1000);
         const expTime = now + 7 * 24 * 3600;
 
         const jwtPayload = {
           sub: user.id,
+          userId: user.id,
           id: user.id,
           email: user.email,
           name: user.email.split('@')[0],
@@ -334,6 +377,7 @@ export default {
           token,
           user: {
             id: user.id,
+            userId: user.id,
             email: user.email,
             name: user.email.split('@')[0],
           },
@@ -341,10 +385,9 @@ export default {
       }
 
       // ===================================================================
-      // Endpoint POST /api/scan-receipt: Analisis Struk Belanja (Protected)
+      // Endpoint POST /api/scan-receipt: Analisis Struk Belanja AI (Protected)
       // ===================================================================
       if (pathname === '/api/scan-receipt' && request.method === 'POST') {
-        // Validasi Autentikasi JWT
         const authUser = await authenticateRequest(request, env);
         if (!authUser) {
           return jsonResponse({
@@ -442,7 +485,7 @@ export default {
 
               const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
               if (!jsonMatch) {
-                throw new Error('Gagal mengekstrak struktur JSON dari hasil AI. Foto struk mungkin buram.');
+                throw new Error('Gagal mengekstrak struktur JSON dari hasil AI.');
               }
 
               let parsed;
@@ -497,11 +540,150 @@ export default {
       }
 
       // ===================================================================
-      // Endpoint DELETE /api/transactions/:id: Hapus Transaksi (Protected & User-Scoped)
+      // Endpoint POST /api/transactions: Tambah Transaksi Tunggal (Protected & Scoped)
+      // Mengembalikan HTTP 201 konfirmasi sukses tersimpan di D1
+      // ===================================================================
+      if (pathname === '/api/transactions' && request.method === 'POST') {
+        const authUser = await authenticateRequest(request, env);
+        if (!authUser) {
+          return jsonResponse({
+            success: false,
+            error: 'Akses ditolak. Sesi tidak valid atau telah kadaluwarsa. Silakan login terlebih dahulu.',
+          }, 401);
+        }
+
+        if (!env.DB) {
+          return jsonResponse({
+            success: false,
+            error: 'Binding database D1 (DB) tidak ditemukan pada konfigurasi Worker.',
+          }, 500);
+        }
+
+        const body = await request.json().catch(() => ({}));
+        const txId = String(body.id || `tx-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
+        const walletId = String(body.wallet_id || body.accountId || 'wallet-default');
+        const amount = Math.abs(Number(body.amount) || 0);
+        const type = body.type === 'income' ? 'income' : 'expense';
+        const category = String(body.category || 'Umum').trim();
+        const note = String(body.note || '').trim();
+        const date = String(body.date || new Date().toISOString().slice(0, 10));
+
+        const statements = [
+          env.DB.prepare(
+            `INSERT INTO transactions (id, user_id, wallet_id, amount, type, category, note, date)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               wallet_id = excluded.wallet_id,
+               amount = excluded.amount,
+               type = excluded.type,
+               category = excluded.category,
+               note = excluded.note,
+               date = excluded.date
+             WHERE transactions.user_id = ?`
+          ).bind(txId, authUser.userId, walletId, amount, type, category, note, date, authUser.userId)
+        ];
+
+        // Sesuaikan saldo dompet user jika walletId ada
+        if (walletId && walletId !== 'wallet-default') {
+          if (type === 'expense') {
+            statements.push(
+              env.DB.prepare('UPDATE wallets SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?').bind(amount, walletId, authUser.userId)
+            );
+          } else if (type === 'income') {
+            statements.push(
+              env.DB.prepare('UPDATE wallets SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?').bind(amount, walletId, authUser.userId)
+            );
+          }
+        }
+
+        await env.DB.batch(statements);
+
+        return jsonResponse({
+          success: true,
+          message: 'Transaksi berhasil disimpan permanen ke Cloudflare D1.',
+          data: {
+            id: txId,
+            user_id: authUser.userId,
+            wallet_id: walletId,
+            amount,
+            type,
+            category,
+            note,
+            date,
+          },
+        }, 201);
+      }
+
+      // ===================================================================
+      // Endpoint PUT /api/transactions/:id: Update Transaksi (Protected & Scoped)
+      // Mengembalikan HTTP 200 konfirmasi sukses
+      // ===================================================================
+      const updateTxMatch = pathname.match(/^\/api\/transactions\/([^\/]+)$/);
+      if (request.method === 'PUT' && updateTxMatch) {
+        const authUser = await authenticateRequest(request, env);
+        if (!authUser) {
+          return jsonResponse({
+            success: false,
+            error: 'Akses ditolak. Sesi tidak valid atau telah kadaluwarsa.',
+          }, 401);
+        }
+
+        if (!env.DB) {
+          return jsonResponse({
+            success: false,
+            error: 'Binding database D1 (DB) tidak ditemukan.',
+          }, 500);
+        }
+
+        const txId = decodeURIComponent(updateTxMatch[1]);
+        const existingTx = await env.DB.prepare(
+          'SELECT id, user_id, wallet_id, amount, type FROM transactions WHERE id = ? AND user_id = ?'
+        ).bind(txId, authUser.userId).first();
+
+        if (!existingTx) {
+          return jsonResponse({
+            success: false,
+            error: 'Transaksi tidak ditemukan atau Anda tidak memiliki akses untuk memperbaruinya.',
+          }, 404);
+        }
+
+        const body = await request.json().catch(() => ({}));
+        const newAmount = body.amount !== undefined ? Math.abs(Number(body.amount)) : existingTx.amount;
+        const newType = body.type || existingTx.type;
+        const newCategory = body.category !== undefined ? String(body.category).trim() : null;
+        const newNote = body.note !== undefined ? String(body.note).trim() : null;
+        const newDate = body.date || null;
+        const newWalletId = body.wallet_id || existingTx.wallet_id;
+
+        await env.DB.prepare(
+          `UPDATE transactions SET
+             wallet_id = COALESCE(?, wallet_id),
+             amount = ?,
+             type = ?,
+             category = COALESCE(?, category),
+             note = COALESCE(?, note),
+             date = COALESCE(?, date)
+           WHERE id = ? AND user_id = ?`
+        ).bind(newWalletId, newAmount, newType, newCategory, newNote, newDate, txId, authUser.userId).run();
+
+        return jsonResponse({
+          success: true,
+          message: 'Transaksi berhasil diperbarui di Cloudflare D1.',
+          data: {
+            id: txId,
+            user_id: authUser.userId,
+            amount: newAmount,
+            type: newType,
+          },
+        }, 200);
+      }
+
+      // ===================================================================
+      // Endpoint DELETE /api/transactions/:id: Hapus Transaksi (Protected & Scoped)
+      // Mengembalikan HTTP 200 konfirmasi sukses
       // ===================================================================
       const deleteTxMatch = pathname.match(/^\/api\/transactions\/([^\/]+)$/);
       if (request.method === 'DELETE' && deleteTxMatch) {
-        // Validasi Autentikasi JWT
         const authUser = await authenticateRequest(request, env);
         if (!authUser) {
           return jsonResponse({
@@ -523,13 +705,13 @@ export default {
             success: true,
             message: 'Transaksi berhasil dihapus (Local mode)',
             deletedId: txId,
-          });
+          }, 200);
         }
 
-        // 1. Cari data transaksi milik user ini (atau transaksi legacy tanpa user_id)
+        // 1. Cari data transaksi HANYA milik user yang sedang aktif (Strict Isolation)
         const existingTx = await env.DB.prepare(
-          'SELECT id, user_id, wallet_id, amount, type FROM transactions WHERE id = ? AND (user_id = ? OR user_id IS NULL)'
-        ).bind(txId, authUser.id).first();
+          'SELECT id, user_id, wallet_id, amount, type FROM transactions WHERE id = ? AND user_id = ?'
+        ).bind(txId, authUser.userId).first();
 
         if (!existingTx) {
           return jsonResponse({
@@ -540,47 +722,45 @@ export default {
 
         const statements = [];
 
-        // 2. Sesuaikan saldo rekening jika ada wallet_id
+        // 2. Sesuaikan saldo rekening jika ada wallet_id milik user ini
         if (existingTx.wallet_id) {
           const amount = Number(existingTx.amount) || 0;
           if (existingTx.type === 'expense') {
             statements.push(
               env.DB.prepare(
-                'UPDATE wallets SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-              ).bind(amount, String(existingTx.wallet_id))
+                'UPDATE wallets SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
+              ).bind(amount, String(existingTx.wallet_id), authUser.userId)
             );
           } else if (existingTx.type === 'income') {
             statements.push(
               env.DB.prepare(
-                'UPDATE wallets SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-              ).bind(amount, String(existingTx.wallet_id))
+                'UPDATE wallets SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
+              ).bind(amount, String(existingTx.wallet_id), authUser.userId)
             );
           }
         }
 
-        // 3. Hapus transaksi dengan filter user_id
+        // 3. Hapus transaksi dengan filter user_id KETAT
         statements.push(
           env.DB.prepare(
-            'DELETE FROM transactions WHERE id = ? AND (user_id = ? OR user_id IS NULL)'
-          ).bind(txId, authUser.id)
+            'DELETE FROM transactions WHERE id = ? AND user_id = ?'
+          ).bind(txId, authUser.userId)
         );
 
-        if (statements.length > 0) {
-          await env.DB.batch(statements);
-        }
+        await env.DB.batch(statements);
 
         return jsonResponse({
           success: true,
-          message: 'Transaksi berhasil dihapus.',
+          message: 'Transaksi berhasil dihapus dari Cloudflare D1.',
           deletedId: txId,
-        });
+        }, 200);
       }
 
       // ===================================================================
-      // Endpoint GET /api/sync: Ambil Data (Protected & User-Scoped)
+      // Endpoint GET /api/sync: Ambil Data (Protected & Strictly User-Scoped)
+      // Mencegah kebocoran data antar user: hanya mengembalikan data milik authUser.userId
       // ===================================================================
       if (pathname === '/api/sync' && request.method === 'GET') {
-        // Validasi Autentikasi JWT
         const authUser = await authenticateRequest(request, env);
         if (!authUser) {
           return jsonResponse({
@@ -596,11 +776,11 @@ export default {
           }, 500);
         }
 
-        // Query data terfilter berdasarkan user_id milik pengguna yang login (termasuk legacy tanpa user_id)
+        // Query data terfilter KETAT berdasarkan user_id milik pengguna yang login
         const [walletsResult, transactionsResult, budgetsResult] = await env.DB.batch([
-          env.DB.prepare('SELECT id, name, balance, color, created_at, updated_at FROM wallets ORDER BY created_at ASC'),
-          env.DB.prepare('SELECT id, user_id, wallet_id, amount, type, category, note, date, created_at FROM transactions WHERE user_id = ? OR user_id IS NULL ORDER BY date DESC').bind(authUser.id),
-          env.DB.prepare('SELECT id, category, allocated, month_year FROM budgets ORDER BY month_year DESC'),
+          env.DB.prepare('SELECT id, user_id, name, balance, color, created_at, updated_at FROM wallets WHERE user_id = ? ORDER BY created_at ASC').bind(authUser.userId),
+          env.DB.prepare('SELECT id, user_id, wallet_id, amount, type, category, note, date, created_at FROM transactions WHERE user_id = ? ORDER BY date DESC').bind(authUser.userId),
+          env.DB.prepare('SELECT id, user_id, category, allocated, month_year FROM budgets WHERE user_id = ? ORDER BY month_year DESC').bind(authUser.userId),
         ]);
 
         return jsonResponse({
@@ -611,7 +791,8 @@ export default {
             budgets: budgetsResult?.results || [],
           },
           user: {
-            id: authUser.id,
+            id: authUser.userId,
+            userId: authUser.userId,
             email: authUser.email,
           },
           timestamp: new Date().toISOString(),
@@ -619,10 +800,10 @@ export default {
       }
 
       // ===================================================================
-      // Endpoint POST /api/sync: Simpan Batch Data (Protected & User-Scoped)
+      // Endpoint POST /api/sync: Simpan Batch Data (Protected & Strictly User-Scoped)
+      // Menjamin seluruh mutasi tersimpan permanen di Cloudflare D1 dengan konfirmasi HTTP 200
       // ===================================================================
       if (pathname === '/api/sync' && request.method === 'POST') {
-        // Validasi Autentikasi JWT
         const authUser = await authenticateRequest(request, env);
         if (!authUser) {
           return jsonResponse({
@@ -645,28 +826,31 @@ export default {
 
         const statements = [];
 
-        // Batch statement untuk Wallets (Upsert)
+        // Batch statement untuk Wallets (Upsert dengan user_id pengguna aktif)
         for (const w of wallets) {
           if (!w.id || !w.name) continue;
           statements.push(
             env.DB.prepare(
-              `INSERT INTO wallets (id, name, balance, color, updated_at)
-               VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+              `INSERT INTO wallets (id, user_id, name, balance, color, updated_at)
+               VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                ON CONFLICT(id) DO UPDATE SET
                  name = excluded.name,
                  balance = excluded.balance,
                  color = excluded.color,
-                 updated_at = CURRENT_TIMESTAMP`
+                 updated_at = CURRENT_TIMESTAMP
+               WHERE wallets.user_id = ?`
             ).bind(
               String(w.id),
+              authUser.userId,
               String(w.name),
               Number(w.balance) || 0,
-              String(w.color || w.theme || 'default')
+              String(w.color || w.theme || 'default'),
+              authUser.userId
             )
           );
         }
 
-        // Batch statement untuk Transactions (Upsert dengan user_id pengguna yang aktif)
+        // Batch statement untuk Transactions (Upsert dengan user_id pengguna aktif)
         for (const t of transactions) {
           if (!t.id) continue;
           const safeType = t.type === 'income' ? 'income' : 'expense';
@@ -675,44 +859,46 @@ export default {
               `INSERT INTO transactions (id, user_id, wallet_id, amount, type, category, note, date)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
-                 user_id = excluded.user_id,
                  wallet_id = excluded.wallet_id,
                  amount = excluded.amount,
                  type = excluded.type,
                  category = excluded.category,
                  note = excluded.note,
                  date = excluded.date
-               WHERE transactions.user_id = ? OR transactions.user_id IS NULL`
+               WHERE transactions.user_id = ?`
             ).bind(
               String(t.id),
-              authUser.id,
+              authUser.userId,
               String(t.wallet_id || t.accountId || 'default-wallet'),
               Number(t.amount) || 0,
               safeType,
               String(t.category || 'Umum'),
               String(t.note || ''),
               String(t.date || new Date().toISOString()),
-              authUser.id
+              authUser.userId
             )
           );
         }
 
-        // Batch statement untuk Budgets (Upsert)
+        // Batch statement untuk Budgets (Upsert dengan user_id pengguna aktif)
         for (const b of budgets) {
           if (!b.id) continue;
           statements.push(
             env.DB.prepare(
-              `INSERT INTO budgets (id, category, allocated, month_year)
-               VALUES (?, ?, ?, ?)
+              `INSERT INTO budgets (id, user_id, category, allocated, month_year)
+               VALUES (?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                  category = excluded.category,
                  allocated = excluded.allocated,
-                 month_year = excluded.month_year`
+                 month_year = excluded.month_year
+               WHERE budgets.user_id = ?`
             ).bind(
               String(b.id),
+              authUser.userId,
               String(b.category || b.name || 'Umum'),
               Number(b.allocated || b.budget) || 0,
-              String(b.month_year || new Date().toISOString().slice(0, 7))
+              String(b.month_year || new Date().toISOString().slice(0, 7)),
+              authUser.userId
             )
           );
         }
@@ -723,14 +909,15 @@ export default {
 
         return jsonResponse({
           success: true,
-          message: 'Sinkronisasi data ke Cloudflare D1 berhasil diproses.',
+          message: 'Sinkronisasi data ke Cloudflare D1 berhasil diproses secara permanen.',
           syncedCounts: {
             wallets: wallets.length,
             transactions: transactions.length,
             budgets: budgets.length,
           },
+          userId: authUser.userId,
           syncedAt: new Date().toISOString(),
-        });
+        }, 200);
       }
 
       // Endpoint tidak ditemukan

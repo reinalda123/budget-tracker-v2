@@ -276,3 +276,89 @@ export async function deleteTransactionApi(id) {
     throw error;
   }
 }
+
+/**
+ * Menyimpan transaksi baru secara langsung ke Cloudflare Worker D1 (POST /api/transactions)
+ * Wajib mendapatkan status konfirmasi sukses (HTTP 201).
+ * @param {Object} tx - Objek transaksi
+ * @returns {Promise<Object>}
+ */
+export async function createTransactionApi(tx) {
+  if (!tx) {
+    throw new Error('Data transaksi diperlukan untuk menyimpan.');
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/transactions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(tx),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok || res.status !== 201) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal menyimpan transaksi ke Cloudflare D1 (${res.status} ${res.statusText})`);
+    }
+
+    const result = await res.json();
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.warn('[createTransactionApi] Error saat menyimpan transaksi ke cloud:', error);
+    throw error;
+  }
+}
+
+/**
+ * Memperbarui transaksi di Cloudflare Worker D1 (PUT /api/transactions/:id)
+ * Wajib mendapatkan status konfirmasi sukses (HTTP 200).
+ * @param {string} id - ID transaksi
+ * @param {Object} tx - Data pembaruan
+ * @returns {Promise<Object>}
+ */
+export async function updateTransactionApi(id, tx) {
+  if (!id) {
+    throw new Error('ID transaksi diperlukan untuk memperbarui.');
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/transactions/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(tx),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok || res.status !== 200) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal memperbarui transaksi di Cloudflare D1 (${res.status} ${res.statusText})`);
+    }
+
+    const result = await res.json();
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.warn('[updateTransactionApi] Error saat memperbarui transaksi ke cloud:', error);
+    throw error;
+  }
+}
+
