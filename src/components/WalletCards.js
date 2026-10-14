@@ -4,6 +4,7 @@ import { formatRupiah, maskValue } from '../utils/formatters.js';
 import { renderIcons } from '../utils/icons.js';
 import { openEditWalletNameModal, openAddAccountModal, openConfirmDeleteWalletModal } from './Modals.js';
 import { showToast } from '../utils/toast.js';
+import { deleteWalletApi } from '../services/api.js';
 
 /**
  * Pilihan palet gradasi mockup kartu rekening & e-wallet
@@ -172,6 +173,7 @@ export class WalletCards {
     const deleteButtons = this.container.querySelectorAll('[data-delete-account-id]');
     deleteButtons.forEach((btn) => {
       btn.addEventListener('click', (event) => {
+        event.preventDefault();
         event.stopPropagation(); // Mencegah klik kartu terpicu
         const accId = btn.getAttribute('data-delete-account-id');
         const state = getState();
@@ -180,9 +182,19 @@ export class WalletCards {
 
         openConfirmDeleteWalletModal({
           account,
-          onConfirm: () => {
+          onConfirm: async () => {
+            // 1. Hapus dari state lokal secara reaktif langsung agar kartu segera hilang dari tampilan
             removeAccount(accId);
-            showToast('Rekening berhasil dihapus', 'success');
+
+            // 2. Tampilkan notifikasi toast sukses
+            showToast('Kartu rekening berhasil dihapus', 'success');
+
+            // 3. Kirim request API penghapusan (DELETE) ke backend Cloudflare D1
+            try {
+              await deleteWalletApi(accId);
+            } catch (err) {
+              console.warn('[WalletCards] Gagal sinkronisasi DELETE rekening ke Cloudflare Worker:', err);
+            }
           },
         });
       });

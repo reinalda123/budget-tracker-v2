@@ -295,6 +295,8 @@ export default {
             health: '/api/health (GET)',
             login: '/api/login (POST)',
             transactions: '/api/transactions (POST, PUT, DELETE - Protected)',
+            wallets: '/api/wallets/:id (DELETE - Protected)',
+            budgets: '/api/budgets/:id (DELETE - Protected)',
             sync: '/api/sync (GET, POST - Protected)',
             scanReceipt: '/api/scan-receipt (POST - Protected)',
           },
@@ -753,6 +755,88 @@ export default {
           success: true,
           message: 'Transaksi berhasil dihapus dari Cloudflare D1.',
           deletedId: txId,
+        }, 200);
+      }
+
+      // ===================================================================
+      // Endpoint DELETE /api/wallets/:id: Hapus Rekening Dompet (Protected & Scoped)
+      // ===================================================================
+      const deleteWalletMatch = pathname.match(/^\/api\/wallets\/([^\/]+)$/);
+      if (request.method === 'DELETE' && deleteWalletMatch) {
+        const authUser = await authenticateRequest(request, env);
+        if (!authUser) {
+          return jsonResponse({
+            success: false,
+            error: 'Akses ditolak. Sesi tidak valid atau telah kadaluwarsa. Silakan login terlebih dahulu.',
+          }, 401);
+        }
+
+        const walletId = decodeURIComponent(deleteWalletMatch[1]);
+        if (!walletId) {
+          return jsonResponse({
+            success: false,
+            error: 'Parameter ID rekening tidak valid.',
+          }, 400);
+        }
+
+        if (!env.DB) {
+          return jsonResponse({
+            success: true,
+            message: 'Rekening berhasil dihapus (Local mode)',
+            deletedId: walletId,
+          }, 200);
+        }
+
+        // Hapus dompet/rekening dari D1 dengan filter user_id KETAT
+        await env.DB.prepare(
+          'DELETE FROM wallets WHERE id = ? AND user_id = ?'
+        ).bind(walletId, authUser.userId).run();
+
+        return jsonResponse({
+          success: true,
+          message: 'Kartu rekening berhasil dihapus dari Cloudflare D1.',
+          deletedId: walletId,
+        }, 200);
+      }
+
+      // ===================================================================
+      // Endpoint DELETE /api/budgets/:id: Hapus Pos Anggaran (Protected & Scoped)
+      // ===================================================================
+      const deleteBudgetMatch = pathname.match(/^\/api\/budgets\/([^\/]+)$/);
+      if (request.method === 'DELETE' && deleteBudgetMatch) {
+        const authUser = await authenticateRequest(request, env);
+        if (!authUser) {
+          return jsonResponse({
+            success: false,
+            error: 'Akses ditolak. Sesi tidak valid atau telah kadaluwarsa. Silakan login terlebih dahulu.',
+          }, 401);
+        }
+
+        const budgetId = decodeURIComponent(deleteBudgetMatch[1]);
+        if (!budgetId) {
+          return jsonResponse({
+            success: false,
+            error: 'Parameter ID pos anggaran tidak valid.',
+          }, 400);
+        }
+
+        if (!env.DB) {
+          return jsonResponse({
+            success: true,
+            message: 'Pos anggaran berhasil dihapus (Local mode)',
+            deletedId: budgetId,
+          }, 200);
+        }
+
+        // Hapus pos anggaran dari D1 dengan filter user_id KETAT (bisa berdasarkan id atau nama kategori)
+        await env.DB.prepare(
+          'DELETE FROM budgets WHERE (id = ? OR category = ?) AND user_id = ?'
+        ).bind(budgetId, budgetId, authUser.userId).run();
+
+        return jsonResponse({
+          success: true,
+          message: 'Pos anggaran berhasil dihapus dari Cloudflare D1.',
+          deletedId: budgetId,
         }, 200);
       }
 

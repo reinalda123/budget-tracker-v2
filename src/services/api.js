@@ -362,3 +362,84 @@ export async function updateTransactionApi(id, tx) {
   }
 }
 
+/**
+ * Menghapus kartu rekening/dompet di Cloudflare Worker D1 (DELETE /api/wallets/:id)
+ * Wajib mendapatkan status konfirmasi sukses (HTTP 200).
+ * @param {string} id - ID dompet/rekening
+ * @returns {Promise<Object>}
+ */
+export async function deleteWalletApi(id) {
+  if (!id) {
+    throw new Error('ID rekening diperlukan untuk menghapus.');
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/wallets/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal menghapus kartu rekening (${res.status} ${res.statusText})`);
+    }
+
+    const result = await res.json();
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.warn('[deleteWalletApi] Error saat menghapus rekening ke cloud:', error);
+    throw error;
+  }
+}
+
+/**
+ * Menghapus pos anggaran/kategori di Cloudflare Worker D1 (DELETE /api/budgets/:id)
+ * Wajib mendapatkan status konfirmasi sukses (HTTP 200).
+ * @param {string} id - ID pos anggaran atau nama kategori
+ * @returns {Promise<Object>}
+ */
+export async function deleteBudgetApi(id) {
+  if (!id) {
+    throw new Error('ID pos anggaran diperlukan untuk menghapus.');
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/budgets/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal menghapus pos anggaran (${res.status} ${res.statusText})`);
+    }
+
+    const result = await res.json();
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.warn('[deleteBudgetApi] Error saat menghapus pos anggaran ke cloud:', error);
+    throw error;
+  }
+}
+
+

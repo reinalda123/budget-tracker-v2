@@ -8,6 +8,8 @@ import { formatDateIndo } from '../utils/dates.js';
 import { renderIcons } from '../utils/icons.js';
 
 const modalRoot = () => document.querySelector('#modal-root');
+const getModalRoot = modalRoot;
+
 
 /**
  * Menutup modal aktif dan membersihkan kontainer modal.
@@ -1567,7 +1569,7 @@ export function openConfirmDeleteTransactionModal(options = {}) {
  * @param {() => void} [options.onCancel] - Callback saat dibatalkan
  */
 export function openConfirmDeleteWalletModal(options = {}) {
-  const root = getModalRoot();
+  const root = modalRoot();
   if (!root) return;
 
   const account = options.account || {};
@@ -1686,7 +1688,7 @@ export function openConfirmDeleteWalletModal(options = {}) {
  * @param {() => void} [options.onCancel] - Callback saat dibatalkan
  */
 export function openConfirmDeleteCategoryModal(options = {}) {
-  const root = getModalRoot();
+  const root = modalRoot();
   if (!root) return;
 
   const category = options.category || {};

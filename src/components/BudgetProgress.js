@@ -5,6 +5,7 @@ import { getRemainingDaysInMonth } from '../utils/dates.js';
 import { renderIcons } from '../utils/icons.js';
 import { openConfirmDeleteCategoryModal } from './Modals.js';
 import { showToast } from '../utils/toast.js';
+import { deleteBudgetApi } from '../services/api.js';
 
 /**
  * Pemetaan ikon Lucide berdasarkan nama/tipe kategori
@@ -103,6 +104,7 @@ export class BudgetProgress {
     const deleteButtons = this.container.querySelectorAll('[data-delete-category-id]');
     deleteButtons.forEach((btn) => {
       btn.addEventListener('click', (e) => {
+        e.preventDefault();
         e.stopPropagation();
         const catId = btn.getAttribute('data-delete-category-id');
         const catName = btn.getAttribute('data-category-name') || 'pos ini';
@@ -111,9 +113,19 @@ export class BudgetProgress {
 
         openConfirmDeleteCategoryModal({
           category: cat,
-          onConfirm: () => {
+          onConfirm: async () => {
+            // 1. Hapus dari state lokal secara reaktif langsung agar item pos anggaran segera hilang dari daftar
             removeCategory(catId);
+
+            // 2. Tampilkan notifikasi toast sukses
             showToast('Pos anggaran berhasil dihapus', 'success');
+
+            // 3. Kirim request API penghapusan (DELETE) ke backend Cloudflare D1
+            try {
+              await deleteBudgetApi(catId);
+            } catch (err) {
+              console.warn('[BudgetProgress] Gagal sinkronisasi DELETE pos anggaran ke Cloudflare Worker:', err);
+            }
           },
         });
       });
