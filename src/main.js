@@ -625,5 +625,12 @@ function initApp() {
   }
 }
 
+// Tangani sesi kadaluwarsa dari API worker secara otomatis
+if (typeof window !== 'undefined') {
+  window.addEventListener('auth:expired', () => {
+    initApp();
+  });
+}
+
 // Jalankan aplikasi
 initApp();

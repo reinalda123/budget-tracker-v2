@@ -103,6 +103,15 @@ export async function fetchCloudData() {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
+      if (res.status === 401) {
+        try {
+          localStorage.removeItem('budget_tracker_jwt_token');
+          localStorage.removeItem('budget_tracker_user');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:expired'));
+          }
+        } catch (e) {}
+      }
       const errJson = await res.json().catch(() => null);
       throw new Error(errJson?.error || `Gagal mengambil data cloud (${res.status} ${res.statusText})`);
     }
@@ -147,6 +156,15 @@ export async function pushCloudData(stateOrPayload) {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
+      if (res.status === 401) {
+        try {
+          localStorage.removeItem('budget_tracker_jwt_token');
+          localStorage.removeItem('budget_tracker_user');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:expired'));
+          }
+        } catch (e) {}
+      }
       const errJson = await res.json().catch(() => null);
       throw new Error(errJson?.error || `Gagal menyimpan ke cloud (${res.status} ${res.statusText})`);
     }
