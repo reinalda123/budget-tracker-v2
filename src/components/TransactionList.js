@@ -161,9 +161,9 @@ export class TransactionList {
     }
 
     this.container.innerHTML = `
-      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 shadow-xs sm:shadow-sm min-h-[420px] h-full flex-1 flex flex-col justify-between">
+      <section class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl border border-[#E4E4E7] dark:border-[#27272A] p-5 sm:p-6 shadow-xs sm:shadow-sm min-h-[420px] h-full flex-1 flex flex-col justify-start items-stretch space-y-4">
         
-        <div class="space-y-4 flex-1 flex flex-col justify-between">
+        <div class="space-y-4 flex-1 flex flex-col justify-start items-stretch">
           <!-- Header & Bilah Filter Cepat -->
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-1">
             <div>
@@ -220,12 +220,12 @@ export class TransactionList {
             }
           </div>
 
-          <!-- Daftar Mutasi Transaksi (Kontras Bersih Gelap & Terang dengan Transisi Filter Mulus) -->
-          <div class="space-y-2.5 flex-1 flex flex-col justify-center my-auto tx-filter-fade">
+          <!-- Daftar Mutasi Transaksi (Top-Aligned Menempel ke Atas) -->
+          <div class="space-y-2.5 flex-1 flex flex-col justify-start items-stretch tx-filter-fade">
             ${
               filteredList.length === 0
                 ? `
-              <div class="py-10 flex-1 flex flex-col items-center justify-center text-center space-y-3.5 my-auto">
+              <div class="py-8 flex flex-col items-center justify-start text-center space-y-3.5">
                 <div class="w-12 h-12 rounded-full bg-[#F9F9F8] dark:bg-[#09090B] text-[#71717A] dark:text-[#A1A1AA] border border-[#E4E4E7] dark:border-[#27272A] flex items-center justify-center mx-auto shadow-2xs">
                   <i data-lucide="receipt" class="w-6 h-6"></i>
                 </div>
@@ -331,7 +331,7 @@ export class TransactionList {
         ${
           this.limit && totalCount > this.limit
             ? `
-          <div class="pt-2 text-center border-t border-[#E4E4E7] dark:border-[#27272A]">
+          <div class="pt-2 text-center border-t border-[#E4E4E7] dark:border-[#27272A] mt-auto">
             <button
               id="btn-view-all-tx"
               type="button"

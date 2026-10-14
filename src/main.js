@@ -181,10 +181,10 @@ function createHomeTabElement() {
     <section id="home-kpi-root"></section>
     
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-      <!-- Kolom Kiri: Daily Burn Rate + Recent Transactions membentang penuh setinggi kolom kanan -->
-      <div class="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
+      <!-- Kolom Kiri: Daily Burn Rate + Recent Transactions membentang penuh setinggi kolom kanan (Top-Aligned) -->
+      <div class="lg:col-span-7 xl:col-span-8 flex flex-col justify-start items-stretch gap-6">
         <section id="daily-burn-root"></section>
-        <section id="recent-transactions-root" class="flex-1 flex flex-col min-h-[420px]"></section>
+        <section id="recent-transactions-root" class="flex-1 flex flex-col justify-start items-stretch min-h-[420px]"></section>
       </div>
 
       <!-- Kolom Kanan: Kategori Anggaran membentang penuh setara tinggi kolom kiri -->
@@ -222,7 +222,7 @@ function createActivityTabElement() {
   el.className = 'space-y-6 w-full';
   el.innerHTML = `
     <section id="calendar-view-root"></section>
-    <section id="full-transactions-root" class="min-h-[420px]"></section>
+    <section id="full-transactions-root" class="flex flex-col justify-start items-stretch min-h-[420px]"></section>
   `;
   mountCalendarView(el.querySelector('#calendar-view-root'));
   mountTransactionList(el.querySelector('#full-transactions-root'), {
