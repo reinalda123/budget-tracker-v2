@@ -2,7 +2,7 @@
 import { store, getState, subscribe, removeAccount } from '../state/store.js';
 import { formatRupiah, maskValue } from '../utils/formatters.js';
 import { renderIcons } from '../utils/icons.js';
-import { openEditWalletNameModal, openAddAccountModal, openConfirmDeleteWalletModal } from './Modals.js';
+import { openEditWalletNameModal, openEditWalletBalanceModal, openAddAccountModal, openConfirmDeleteWalletModal } from './Modals.js';
 import { showToast } from '../utils/toast.js';
 import { deleteWalletApi } from '../services/api.js';
 
@@ -114,6 +114,7 @@ export class WalletCards {
     this.onSelectAccount = options.onSelectAccount || (() => {});
     this.onTransferClick = options.onTransferClick || (() => {});
     this.onEditAccount = options.onEditAccount || ((account) => openEditWalletNameModal(account));
+    this.onEditBalance = options.onEditBalance || ((account) => openEditWalletBalanceModal(account));
 
     // Langganan perubahan state (misal isMasked berubah atau accounts diperbarui)
     this.unsubscribe = subscribe(() => this.render());
@@ -140,6 +141,25 @@ export class WalletCards {
         const state = getState();
         const account = (state.accounts || []).find((a) => String(a.id) === String(accId));
         this.onTransferClick(account);
+      });
+    });
+
+    // Tombol Edit Saldo Rekening pada setiap kartu (ikon pensil halus)
+    const editBalanceButtons = this.container.querySelectorAll('.btn-edit-balance, [data-edit-balance-id]');
+    editBalanceButtons.forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        event.stopPropagation(); // Mencegah klik kartu terpicu
+        event.preventDefault();
+        const accId = btn.getAttribute('data-edit-balance-id') || btn.getAttribute('data-id');
+        const state = getState();
+        const account = (state.accounts || []).find((a) => String(a.id) === String(accId));
+        if (account) {
+          if (typeof this.onEditBalance === 'function') {
+            this.onEditBalance(account);
+          } else {
+            openEditWalletBalanceModal(account);
+          }
+        }
       });
     });
 
@@ -305,12 +325,27 @@ export class WalletCards {
                     </span>
                   </div>
 
-                  <!-- Baris Tengah: Saldo Nominal -->
-                  <div class="my-auto">
-                    <span class="text-[10px] uppercase tracking-wider text-white/60 font-medium">Saldo Tersedia</span>
-                    <p class="text-2xl font-extrabold tracking-tight drop-shadow-sm text-white">
-                      <span class="privacy-mask">${displayBalance}</span>
-                    </p>
+                  <!-- Baris Tengah: Saldo Nominal & Tombol Pemicu Edit Saldo -->
+                  <div class="my-auto flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                      <span class="text-[10px] uppercase tracking-wider text-white/60 font-medium block">Saldo Tersedia</span>
+                      <p class="text-2xl font-extrabold tracking-tight drop-shadow-sm text-white truncate">
+                        <span class="privacy-mask">${displayBalance}</span>
+                      </p>
+                    </div>
+
+                    <!-- Tombol Pemicu Edit Saldo Rekening -->
+                    <button
+                      type="button"
+                      data-action="edit-balance"
+                      data-edit-balance-id="${acc.id}"
+                      title="Edit Saldo Rekening"
+                      aria-label="Edit Saldo Rekening"
+                      class="btn-edit-balance flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold backdrop-blur-sm border border-white/20 transition-all cursor-pointer active:opacity-80 shrink-0 shadow-2xs"
+                    >
+                      <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                      <span class="hidden sm:inline">Ubah Saldo</span>
+                    </button>
                   </div>
 
                   <!-- Baris Bawah: Nama Dompet/Bank & Tombol Aksi (Transfer / Hapus) -->

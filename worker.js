@@ -295,7 +295,7 @@ export default {
             health: '/api/health (GET)',
             login: '/api/login (POST)',
             transactions: '/api/transactions (POST, PUT, DELETE - Protected)',
-            wallets: '/api/wallets/:id (DELETE - Protected)',
+            wallets: '/api/wallets/:id (PUT, PATCH, DELETE - Protected)',
             budgets: '/api/budgets/:id (DELETE - Protected)',
             sync: '/api/sync (GET, POST - Protected)',
             scanReceipt: '/api/scan-receipt (POST - Protected)',
@@ -755,6 +755,68 @@ export default {
           success: true,
           message: 'Transaksi berhasil dihapus dari Cloudflare D1.',
           deletedId: txId,
+        }, 200);
+      }
+
+      // ===================================================================
+      // Endpoint PUT /api/wallets/:id & PATCH /api/wallets/:id: Perbarui Saldo Rekening (Protected & Scoped)
+      // ===================================================================
+      const updateWalletMatch = pathname.match(/^\/api\/wallets\/([^\/]+)$/);
+      if ((request.method === 'PUT' || request.method === 'PATCH') && updateWalletMatch) {
+        const authUser = await authenticateRequest(request, env);
+        if (!authUser) {
+          return jsonResponse({
+            success: false,
+            error: 'Akses ditolak. Sesi tidak valid atau telah kadaluwarsa. Silakan login terlebih dahulu.',
+          }, 401);
+        }
+
+        const walletId = decodeURIComponent(updateWalletMatch[1]);
+        if (!walletId) {
+          return jsonResponse({
+            success: false,
+            error: 'Parameter ID rekening tidak valid.',
+          }, 400);
+        }
+
+        let body = {};
+        try {
+          body = await request.json();
+        } catch (e) {
+          return jsonResponse({
+            success: false,
+            error: 'Format request body tidak valid (harus JSON).',
+          }, 400);
+        }
+
+        if (body.balance === undefined || body.balance === null || isNaN(Number(body.balance))) {
+          return jsonResponse({
+            success: false,
+            error: 'Parameter balance wajib diisi dengan angka yang valid.',
+          }, 400);
+        }
+
+        const newBalance = Number(body.balance);
+
+        if (!env.DB) {
+          return jsonResponse({
+            success: true,
+            message: 'Saldo rekening berhasil diperbarui (Local mode)',
+            updatedId: walletId,
+            balance: newBalance,
+          }, 200);
+        }
+
+        // Update kolom balance pada tabel wallets di Cloudflare D1 berdasarkan id rekening dan user_id
+        await env.DB.prepare(
+          'UPDATE wallets SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
+        ).bind(newBalance, walletId, authUser.userId).run();
+
+        return jsonResponse({
+          success: true,
+          message: 'Saldo rekening berhasil diperbarui di Cloudflare D1.',
+          updatedId: walletId,
+          balance: newBalance,
         }, 200);
       }
 

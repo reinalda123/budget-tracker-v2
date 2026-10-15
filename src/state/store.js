@@ -416,6 +416,33 @@ export function updateWalletName(walletId, newName) {
 }
 
 /**
+ * Memperbarui saldo dompet/rekening bank berdasarkan ID.
+ * @param {string|number} walletId
+ * @param {number} newBalance
+ * @returns {Object|null} Rekening yang diperbarui
+ */
+export function updateWalletBalance(walletId, newBalance) {
+  if (walletId === undefined || walletId === null) return null;
+  const safeBalance = Math.max(0, Number(newBalance) || 0);
+  const accounts = currentState.accounts || [];
+  let updatedAccount = null;
+  const updatedAccounts = accounts.map((acc) => {
+    if (String(acc.id) === String(walletId)) {
+      updatedAccount = { ...acc, balance: safeBalance };
+      return updatedAccount;
+    }
+    return acc;
+  });
+
+  if (updatedAccount) {
+    setState({ accounts: updatedAccounts });
+    scheduleCloudSync();
+  }
+
+  return updatedAccount;
+}
+
+/**
  * Menambahkan rekening/dompet baru ke state secara manual tanpa gacha/random.
  * @param {{ name: string, balance?: number, type?: string, provider?: string, theme?: string }} account
  * @returns {Object|null}
@@ -779,6 +806,7 @@ export const store = {
   addAccount,
   removeAccount,
   updateWalletName,
+  updateWalletBalance,
   addCategory,
   updateCategoryBudget,
   removeCategory,

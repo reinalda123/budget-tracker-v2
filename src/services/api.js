@@ -454,6 +454,49 @@ export async function updateTransactionApi(id, tx) {
 }
 
 /**
+ * Memperbarui saldo kartu rekening/dompet di Cloudflare Worker D1 (PUT /api/wallets/:id)
+ * Wajib mendapatkan status konfirmasi sukses (HTTP 200).
+ * @param {string} id - ID dompet/rekening
+ * @param {number} balance - Saldo baru
+ * @returns {Promise<Object>}
+ */
+export async function updateWalletBalanceApi(id, balance) {
+  if (!id) {
+    throw new Error('ID rekening diperlukan untuk memperbarui saldo.');
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/wallets/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ balance: Number(balance) || 0 }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal memperbarui saldo rekening (${res.status} ${res.statusText})`);
+    }
+
+    const result = await res.json();
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.warn('[updateWalletBalanceApi] Error saat memperbarui saldo rekening ke cloud:', error);
+    throw error;
+  }
+}
+
+/**
  * Menghapus kartu rekening/dompet di Cloudflare Worker D1 (DELETE /api/wallets/:id)
  * Wajib mendapatkan status konfirmasi sukses (HTTP 200).
  * @param {string} id - ID dompet/rekening

@@ -1,7 +1,7 @@
 // src/components/Modals.js
-import { store, getState, setState, transferBalance, addCategory, updateCategoryBudget, updateWalletName, addAccount, deleteTransaction, updateTransaction, triggerImmediateSync } from '../state/store.js';
+import { store, getState, setState, transferBalance, addCategory, updateCategoryBudget, updateWalletName, updateWalletBalance, addAccount, deleteTransaction, updateTransaction, triggerImmediateSync } from '../state/store.js';
 import { compressReceiptImage } from '../services/scanner.js';
-import { scanReceiptWithAI, deleteTransactionApi, updateTransactionApi } from '../services/api.js';
+import { scanReceiptWithAI, deleteTransactionApi, updateTransactionApi, updateWalletBalanceApi } from '../services/api.js';
 import { login } from '../services/auth.js';
 import { formatRupiah } from '../utils/formatters.js';
 import { formatDateIndo } from '../utils/dates.js';
@@ -1364,6 +1364,172 @@ export function openEditWalletNameModal(wallet, options = {}) {
     closeModal();
     if (typeof options.onSuccess === 'function') {
       options.onSuccess(newName);
+    }
+  });
+}
+
+/**
+ * Menampilkan Modal Edit Saldo Rekening (Menyesuaikan saldo rekening secara manual)
+ * @param {Object} wallet - Data rekening { id, name, balance, type, ... }
+ * @param {Object} [options]
+ * @param {(updatedAccount: Object) => void} [options.onSuccess]
+ */
+export function openEditWalletBalanceModal(wallet, options = {}) {
+  const root = modalRoot();
+  if (!root || !wallet) return;
+
+  const walletId = wallet.id;
+  const currentName = wallet.name || 'Rekening';
+  const currentBalance = Math.max(0, Number(wallet.balance) || 0);
+  const walletType = wallet.type || 'Bank';
+
+  root.innerHTML = `
+    <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
+      <div class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl shadow-2xl border border-[#E4E4E7] dark:border-[#27272A] w-full max-w-sm sm:max-w-md p-6 sm:p-7 space-y-5 my-auto animate-in fade-in zoom-in-95 duration-150">
+        
+        <!-- Header Modal -->
+        <div class="flex items-center justify-between pb-3 border-b border-[#E4E4E7] dark:border-[#27272A]">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] flex items-center justify-center">
+              <i data-lucide="wallet" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-[#09090B] dark:text-[#F4F4F5]">Edit Saldo Rekening</h3>
+              <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">Sesuaikan nilai saldo riil pada rekening</p>
+            </div>
+          </div>
+          <button id="btn-close-edit-balance" type="button" class="p-2 text-[#71717A] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Form Edit Saldo -->
+        <form id="form-edit-wallet-balance" class="space-y-4">
+          <!-- Info Nama Rekening (Label Informasi Read-Only) -->
+          <div class="p-3.5 rounded-xl bg-[#F9F9F8] dark:bg-[#09090B]/60 border border-[#E4E4E7] dark:border-[#27272A] flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <span class="text-[10px] font-bold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider block">Nama Rekening</span>
+              <p class="text-sm font-bold text-[#09090B] dark:text-[#F4F4F5] truncate">${currentName}</p>
+              <span class="inline-block mt-0.5 text-[10px] font-semibold text-[#71717A] dark:text-[#A1A1AA] px-1.5 py-0.5 rounded bg-zinc-200/60 dark:bg-zinc-800 border border-zinc-300/40 dark:border-zinc-700/50">${walletType}</span>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="text-[10px] font-bold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider block">Saldo Saat Ini</span>
+              <p class="text-xs sm:text-sm font-bold text-[#71717A] dark:text-[#A1A1AA]">${formatRupiah(currentBalance)}</p>
+            </div>
+          </div>
+
+          <!-- Input Saldo Baru -->
+          <div>
+            <label for="wallet_new_balance" class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">
+              Saldo Baru (Rp)
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm">Rp</span>
+              <input
+                id="wallet_new_balance"
+                type="number"
+                min="0"
+                step="any"
+                required
+                value="${currentBalance}"
+                placeholder="0"
+                class="w-full pl-11 pr-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] font-extrabold text-base outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#FFFFFF] dark:bg-[#09090B] placeholder-zinc-300 dark:placeholder-zinc-600"
+              >
+            </div>
+            <!-- Live Preview Format Ribuan / Rupiah -->
+            <p id="preview-new-balance" class="text-xs text-[#71717A] dark:text-[#A1A1AA] mt-1.5 font-medium flex items-center gap-1">
+              <span>Pratinjau:</span>
+              <span class="font-bold text-[#09090B] dark:text-[#F4F4F5]">${formatRupiah(currentBalance)}</span>
+            </p>
+          </div>
+
+          <!-- Tombol Aksi: Batal & Simpan Perubahan -->
+          <div class="pt-2 flex items-center justify-end gap-3 border-t border-[#E4E4E7] dark:border-[#27272A]">
+            <button
+              id="btn-cancel-edit-balance"
+              type="button"
+              class="px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              id="btn-submit-edit-balance"
+              type="submit"
+              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center gap-2"
+            >
+              <span>Simpan Perubahan</span>
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  `;
+
+  renderIcons(root);
+
+  // Update live preview pratinjau nominal
+  const balanceInput = root.querySelector('#wallet_new_balance');
+  const previewEl = root.querySelector('#preview-new-balance');
+  balanceInput?.addEventListener('input', () => {
+    const rawVal = balanceInput.value;
+    const num = Number(rawVal);
+    if (!isNaN(num) && num >= 0 && rawVal.trim() !== '') {
+      previewEl.innerHTML = `<span>Pratinjau:</span> <span class="font-bold text-[#09090B] dark:text-[#F4F4F5]">${formatRupiah(num)}</span>`;
+    } else {
+      previewEl.innerHTML = `<span>Pratinjau:</span> <span class="font-bold text-[#09090B] dark:text-[#F4F4F5]">Rp 0</span>`;
+    }
+  });
+
+  // Event handler tutup modal
+  root.querySelector('#btn-close-edit-balance')?.addEventListener('click', closeModal);
+  root.querySelector('#btn-cancel-edit-balance')?.addEventListener('click', closeModal);
+  root.querySelector('#modal-backdrop')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-backdrop') closeModal();
+  });
+
+  // Event handler submit form
+  const form = root.querySelector('#form-edit-wallet-balance');
+  const submitBtn = root.querySelector('#btn-submit-edit-balance');
+  let isSaving = false;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (isSaving) return;
+
+    const newBalanceNum = Number(balanceInput?.value);
+    if (isNaN(newBalanceNum) || newBalanceNum < 0) {
+      alert('Nominal saldo harus berupa angka yang valid (minimal Rp 0).');
+      return;
+    }
+
+    isSaving = true;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+        <span>Menyimpan...</span>
+      `;
+    }
+
+    // 1. Perbarui state lokal secara reaktif langsung
+    const updatedAcc = store.updateWalletBalance(walletId, newBalanceNum);
+
+    // 2. Tutup modal
+    closeModal();
+
+    // 3. Tampilkan toast notifikasi sukses
+    showToast(`Saldo ${currentName} berhasil diperbarui menjadi ${formatRupiah(newBalanceNum)}`, 'success');
+
+    // 4. Sinkronisasi langsung ke Cloudflare D1 via Worker
+    try {
+      await updateWalletBalanceApi(walletId, newBalanceNum);
+    } catch (err) {
+      console.warn('[EditBalanceModal] Gagal sinkronisasi update saldo ke Cloudflare Worker:', err);
+    }
+
+    if (typeof options.onSuccess === 'function') {
+      options.onSuccess(updatedAcc);
     }
   });
 }

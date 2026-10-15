@@ -18,6 +18,7 @@ import {
   openEditBudgetModal,
   openAddCategoryModal,
   openEditWalletNameModal,
+  openEditWalletBalanceModal,
   openAddAccountModal,
 } from './components/Modals.js';
 import { initIosInstallPrompt } from './components/IosPwaPromptModal.js';
@@ -365,6 +366,7 @@ function mountWalletCards(container) {
     onTransferClick: () => openTransferModal(),
     onAddAccountClick: () => openAddAccountModal(),
     onEditWalletClick: (account) => openEditWalletNameModal(account),
+    onEditBalance: (account) => openEditWalletBalanceModal(account),
   });
 }
 
