@@ -169,21 +169,25 @@ export async function triggerImmediateSync() {
       id: String(w.id),
       name: w.name,
       balance: Number(w.balance) || 0,
-      type: 'bank',
+      type: w.type || 'Bank',
       provider: w.name,
       theme: w.color || 'default',
     }));
 
-    const mappedTransactions = (cloudData.transactions || []).map((t) => ({
-      id: String(t.id),
-      wallet_id: String(t.wallet_id),
-      accountId: String(t.wallet_id),
-      amount: Number(t.amount) || 0,
-      type: t.type,
-      category: t.category,
-      note: t.note || '',
-      date: t.date,
-    }));
+    const mappedTransactions = (cloudData.transactions || []).map((t) => {
+      const matchedWallet = mappedAccounts.find((a) => String(a.id) === String(t.wallet_id));
+      return {
+        id: String(t.id),
+        wallet_id: String(t.wallet_id),
+        accountId: String(t.wallet_id),
+        accountName: matchedWallet ? matchedWallet.name : 'Rekening',
+        amount: Number(t.amount) || 0,
+        type: t.type,
+        category: t.category,
+        note: t.note || '',
+        date: t.date,
+      };
+    });
 
     const mappedCategories = (cloudData.budgets || []).map((b) => ({
       id: String(b.id),
@@ -612,6 +616,106 @@ export function deleteTransaction(transactionId) {
 }
 
 /**
+ * Memperbarui data transaksi berdasarkan ID, menyesuaikan saldo rekening lama/baru dan anggaran kategori terkait.
+ * @param {string} transactionId
+ * @param {Object} updatedFields
+ * @returns {Object|null} Transaksi yang diperbarui
+ */
+export function updateTransaction(transactionId, updatedFields) {
+  const state = getState();
+  const txList = state.transactions || [];
+  const oldTx = txList.find((t) => String(t.id) === String(transactionId));
+  if (!oldTx) return null;
+
+  // 1. Revert saldo rekening lama
+  let accounts = [...(state.accounts || [])];
+  const oldAccountId = oldTx.accountId || oldTx.wallet_id;
+  const oldAmount = Number(oldTx.amount) || 0;
+  const oldIsExpense = oldTx.type === 'expense';
+
+  accounts = accounts.map((acc) => {
+    if (String(acc.id) === String(oldAccountId)) {
+      const cur = Number(acc.balance) || 0;
+      return {
+        ...acc,
+        balance: oldIsExpense ? cur + oldAmount : cur - oldAmount,
+      };
+    }
+    return acc;
+  });
+
+  // 2. Revert pemakaian pos kategori lama jika pengeluaran
+  let categories = [...(state.categories || [])];
+  if (oldIsExpense) {
+    categories = categories.map((c) => {
+      if (c.name === oldTx.category) {
+        return {
+          ...c,
+          spent: Math.max(0, (Number(c.spent) || 0) - oldAmount),
+        };
+      }
+      return c;
+    });
+  }
+
+  // 3. Terapkan pembaruan pada rekening baru
+  const newType = updatedFields.type || oldTx.type;
+  const newAmount = updatedFields.amount !== undefined ? Math.abs(Number(updatedFields.amount)) : oldAmount;
+  const newAccountId = updatedFields.wallet_id || updatedFields.accountId || oldAccountId;
+  const newIsExpense = newType === 'expense';
+
+  accounts = accounts.map((acc) => {
+    if (String(acc.id) === String(newAccountId)) {
+      const cur = Number(acc.balance) || 0;
+      return {
+        ...acc,
+        balance: newIsExpense ? cur - newAmount : cur + newAmount,
+      };
+    }
+    return acc;
+  });
+
+  // 4. Terapkan pembaruan pada pos kategori baru jika pengeluaran
+  const newCategory = updatedFields.category || oldTx.category;
+  if (newIsExpense) {
+    categories = categories.map((c) => {
+      if (c.name === newCategory) {
+        return {
+          ...c,
+          spent: (Number(c.spent) || 0) + newAmount,
+        };
+      }
+      return c;
+    });
+  }
+
+  // Dapatkan nama rekening terbaru
+  const matchedAcc = accounts.find((a) => String(a.id) === String(newAccountId));
+  const accountName = matchedAcc ? matchedAcc.name : (updatedFields.accountName || oldTx.accountName || 'Rekening');
+
+  const updatedTx = {
+    ...oldTx,
+    ...updatedFields,
+    type: newType,
+    amount: newAmount,
+    category: newCategory,
+    wallet_id: newAccountId,
+    accountId: newAccountId,
+    accountName,
+  };
+
+  const updatedTransactions = txList.map((t) => (String(t.id) === String(transactionId) ? updatedTx : t));
+
+  setState({
+    transactions: updatedTransactions,
+    accounts,
+    categories,
+  });
+
+  return updatedTx;
+}
+
+/**
  * Toggle tema gelap / terang.
  */
 export function toggleTheme() {
@@ -680,6 +784,7 @@ export const store = {
   removeCategory,
   transferBalance,
   deleteTransaction,
+  updateTransaction,
   toggleTheme,
   setTheme,
   setActiveTab,

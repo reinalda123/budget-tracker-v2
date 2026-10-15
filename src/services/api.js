@@ -56,6 +56,7 @@ export function formatStateToCloudPayload(state = {}) {
     name: acc.name,
     balance: Number(acc.balance) || 0,
     color: acc.theme || acc.color || 'default',
+    type: acc.type || 'Bank',
   }));
 
   const cloudTransactions = transactions.map((t) => ({

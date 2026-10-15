@@ -883,7 +883,7 @@ export default {
         }
 
         const res = await env.DB.prepare(
-          'SELECT id, user_id, name, balance, color, created_at, updated_at FROM wallets WHERE user_id = ? ORDER BY created_at ASC'
+          'SELECT id, user_id, name, balance, color, type, created_at, updated_at FROM wallets WHERE user_id = ? ORDER BY created_at ASC'
         ).bind(authUser.userId).all();
 
         return jsonResponse({
@@ -940,7 +940,7 @@ export default {
 
         // Query data terfilter KETAT berdasarkan user_id milik pengguna yang login
         const [walletsResult, transactionsResult, budgetsResult] = await env.DB.batch([
-          env.DB.prepare('SELECT id, user_id, name, balance, color, created_at, updated_at FROM wallets WHERE user_id = ? ORDER BY created_at ASC').bind(authUser.userId),
+          env.DB.prepare('SELECT id, user_id, name, balance, color, type, created_at, updated_at FROM wallets WHERE user_id = ? ORDER BY created_at ASC').bind(authUser.userId),
           env.DB.prepare('SELECT id, user_id, wallet_id, amount, type, category, note, date, created_at FROM transactions WHERE user_id = ? ORDER BY date DESC').bind(authUser.userId),
           env.DB.prepare('SELECT id, user_id, category, allocated, month_year FROM budgets WHERE user_id = ? ORDER BY month_year DESC').bind(authUser.userId),
         ]);
@@ -993,12 +993,13 @@ export default {
           if (!w.id || !w.name) continue;
           statements.push(
             env.DB.prepare(
-              `INSERT INTO wallets (id, user_id, name, balance, color, updated_at)
-               VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              `INSERT INTO wallets (id, user_id, name, balance, color, type, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                ON CONFLICT(id) DO UPDATE SET
                  name = excluded.name,
                  balance = excluded.balance,
                  color = excluded.color,
+                 type = excluded.type,
                  updated_at = CURRENT_TIMESTAMP
                WHERE wallets.user_id = ?`
             ).bind(
@@ -1007,6 +1008,7 @@ export default {
               String(w.name),
               Number(w.balance) || 0,
               String(w.color || w.theme || 'default'),
+              String(w.type || 'Bank'),
               authUser.userId
             )
           );

@@ -357,10 +357,12 @@ export class ReportView {
                           year: 'numeric',
                         });
                         const isInc = tx.type === 'income';
+                        const matchedAccount = accounts.find((a) => String(a.id) === String(tx.wallet_id || tx.accountId));
+                        const accountName = tx.accountName || matchedAccount?.name || 'Rekening';
                         return `
                         <tr style="border-bottom: 1px solid #e2e8f0;">
                           <td style="padding: 8px 10px; color: #475569; border-right: 1px solid #cbd5e1; white-space: nowrap;">${dateFormatted}</td>
-                          <td style="padding: 8px 10px; font-weight: 500; color: #334155; border-right: 1px solid #cbd5e1;">${tx.accountName || 'Dompet Utama'}</td>
+                          <td style="padding: 8px 10px; font-weight: 500; color: #334155; border-right: 1px solid #cbd5e1;">${accountName}</td>
                           <td style="padding: 8px 10px; color: #334155; border-right: 1px solid #cbd5e1;">${tx.category || '-'}</td>
                           <td style="padding: 8px 10px; color: #475569; border-right: 1px solid #cbd5e1;">${tx.note || '-'}</td>
                           <td style="padding: 8px 10px; text-align: right; font-weight: 700; white-space: nowrap; color: ${isInc ? '#15803d' : '#b91c1c'};">

@@ -1,11 +1,12 @@
 // src/components/Modals.js
-import { store, getState, setState, transferBalance, addCategory, updateCategoryBudget, updateWalletName, addAccount, deleteTransaction, triggerImmediateSync } from '../state/store.js';
+import { store, getState, setState, transferBalance, addCategory, updateCategoryBudget, updateWalletName, addAccount, deleteTransaction, updateTransaction, triggerImmediateSync } from '../state/store.js';
 import { compressReceiptImage } from '../services/scanner.js';
-import { scanReceiptWithAI } from '../services/api.js';
+import { scanReceiptWithAI, deleteTransactionApi, updateTransactionApi } from '../services/api.js';
 import { login } from '../services/auth.js';
 import { formatRupiah } from '../utils/formatters.js';
 import { formatDateIndo } from '../utils/dates.js';
 import { renderIcons } from '../utils/icons.js';
+import { showToast } from '../utils/toast.js';
 
 const modalRoot = () => document.querySelector('#modal-root');
 const getModalRoot = modalRoot;
@@ -56,7 +57,8 @@ export function openTransactionModal(options = {}) {
            c.name.toLowerCase().includes(rawCategory.toLowerCase()) ||
            (rawCategory && rawCategory.toLowerCase().includes(c.name.toLowerCase()))
   );
-  const selectedCatName = matchingCat ? matchingCat.name : (rawCategory || 'Lainnya');
+  let categoryMode = (!matchingCat && rawCategory) ? 'custom' : 'select';
+  const selectedCatName = matchingCat ? matchingCat.name : (rawCategory || categories[0]?.name || 'Lainnya');
 
   // Siapkan opsi kategori dropdown
   const categoryOptionsHtml = [
@@ -153,14 +155,49 @@ export function openTransactionModal(options = {}) {
           <!-- Kategori & Rekening Sumber -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Pos Kategori</label>
-              <select
-                id="tx_category"
-                required
-                class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
-              >
-                ${categoryOptionsHtml}
-              </select>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider">
+                  Kategori
+                </label>
+                <!-- Toggle Mode: Pilih vs Ketik Bebas -->
+                <div class="inline-flex p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-[#E4E4E7] dark:border-[#27272A] text-[11px]">
+                  <button
+                    type="button"
+                    id="btn-cat-mode-select"
+                    class="px-2 py-0.5 rounded-md font-semibold transition-all ${categoryMode === 'select' ? 'bg-white dark:bg-[#121214] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs' : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]'}"
+                  >
+                    Pilih Pos
+                  </button>
+                  <button
+                    type="button"
+                    id="btn-cat-mode-custom"
+                    class="px-2 py-0.5 rounded-md font-semibold transition-all ${categoryMode === 'custom' ? 'bg-white dark:bg-[#121214] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs' : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]'}"
+                  >
+                    Ketik Bebas
+                  </button>
+                </div>
+              </div>
+
+              <!-- Container Dropdown Pos Anggaran -->
+              <div id="container-cat-select" class="${categoryMode === 'select' ? '' : 'hidden'}">
+                <select
+                  id="tx_category"
+                  class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
+                >
+                  ${categoryOptionsHtml}
+                </select>
+              </div>
+
+              <!-- Container Input Teks Bebas (Tanpa Plafon Anggaran) -->
+              <div id="container-cat-custom" class="${categoryMode === 'custom' ? '' : 'hidden'}">
+                <input
+                  id="tx_category_custom"
+                  type="text"
+                  value="${categoryMode === 'custom' ? rawCategory : ''}"
+                  placeholder="Ketik kategori bebas (tanpa pos plafon)..."
+                  class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none placeholder-zinc-300 dark:placeholder-zinc-600"
+                >
+              </div>
             </div>
 
             <div>
@@ -248,6 +285,30 @@ export function openTransactionModal(options = {}) {
     });
   });
 
+  // Setup toggle mode kategori: Pilih Pos vs Ketik Bebas
+  const btnCatModeSelect = root.querySelector('#btn-cat-mode-select');
+  const btnCatModeCustom = root.querySelector('#btn-cat-mode-custom');
+  const containerCatSelect = root.querySelector('#container-cat-select');
+  const containerCatCustom = root.querySelector('#container-cat-custom');
+  const inputCatCustom = root.querySelector('#tx_category_custom');
+
+  btnCatModeSelect?.addEventListener('click', () => {
+    categoryMode = 'select';
+    containerCatSelect?.classList.remove('hidden');
+    containerCatCustom?.classList.add('hidden');
+    btnCatModeSelect.className = 'px-2 py-0.5 rounded-md font-semibold transition-all bg-white dark:bg-[#121214] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs';
+    btnCatModeCustom.className = 'px-2 py-0.5 rounded-md font-semibold transition-all text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]';
+  });
+
+  btnCatModeCustom?.addEventListener('click', () => {
+    categoryMode = 'custom';
+    containerCatSelect?.classList.add('hidden');
+    containerCatCustom?.classList.remove('hidden');
+    btnCatModeCustom.className = 'px-2 py-0.5 rounded-md font-semibold transition-all bg-white dark:bg-[#121214] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs';
+    btnCatModeSelect.className = 'px-2 py-0.5 rounded-md font-semibold transition-all text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]';
+    inputCatCustom?.focus();
+  });
+
   // Tombol Close
   root.querySelector('#btn-close-modal')?.addEventListener('click', closeModal);
   root.querySelector('#btn-cancel-tx')?.addEventListener('click', closeModal);
@@ -281,8 +342,13 @@ export function openTransactionModal(options = {}) {
       const amountInput = root.querySelector('#tx_amount');
       const amount = Number(amountInput?.value);
 
-      const categorySelect = root.querySelector('#tx_category');
-      const category = categorySelect?.value || selectedCatName || 'Belanja Kebutuhan';
+      let category = '';
+      if (categoryMode === 'custom') {
+        category = inputCatCustom?.value?.trim() || 'Lainnya';
+      } else {
+        const categorySelect = root.querySelector('#tx_category');
+        category = categorySelect?.value || selectedCatName || 'Lainnya';
+      }
 
       // Pastikan accountId valid dari dropdown
       const accountSelect = root.querySelector('#tx_account');
@@ -1313,7 +1379,7 @@ export function openAddAccountModal(options = {}) {
 
   root.innerHTML = `
     <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
-      <div class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl shadow-2xl border border-[#E4E4E7] dark:border-[#27272A] max-w-md w-full p-6 space-y-5 my-auto animate-in fade-in zoom-in-95 duration-150">
+      <div class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl shadow-2xl border border-[#E4E4E7] dark:border-[#27272A] w-full max-w-md md:max-w-lg lg:max-w-[480px] p-6 sm:p-7 space-y-5 my-auto animate-in fade-in zoom-in-95 duration-150">
         
         <!-- Header Modal -->
         <div class="flex items-center justify-between pb-3 border-b border-[#E4E4E7] dark:border-[#27272A]">
@@ -1347,38 +1413,41 @@ export function openAddAccountModal(options = {}) {
             >
           </div>
 
-          <!-- Input Saldo Awal -->
-          <div>
-            <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">
-              Saldo Awal (Rp)
-            </label>
-            <div class="relative">
-              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm">Rp</span>
+          <!-- Saldo Awal & Tipe Rekening Sejajar di Desktop -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Input Saldo Awal -->
+            <div>
+              <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">
+                Saldo Awal (Rp)
+              </label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm">Rp</span>
+                <input
+                  id="acc_balance"
+                  type="number"
+                  min="0"
+                  required
+                  value="0"
+                  placeholder="0"
+                  class="w-full pl-11 pr-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] font-extrabold text-base outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#FFFFFF] dark:bg-[#09090B] placeholder-zinc-300 dark:placeholder-zinc-600"
+                >
+              </div>
+            </div>
+
+            <!-- Input Tipe Rekening Bebas (User bebas mengetik: E-Wallet, Bank Digital, Tunai) -->
+            <div>
+              <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">
+                Tipe Rekening
+              </label>
               <input
-                id="acc_balance"
-                type="number"
-                min="0"
+                id="acc_type"
+                type="text"
                 required
-                value="0"
-                placeholder="0"
-                class="w-full pl-11 pr-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] font-extrabold text-lg outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#FFFFFF] dark:bg-[#09090B] placeholder-zinc-300 dark:placeholder-zinc-600"
+                placeholder="Contoh: E-Wallet, Bank Digital, Tunai"
+                value="Bank"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] bg-[#FFFFFF] dark:bg-[#09090B] text-sm font-medium outline-none placeholder-zinc-300 dark:placeholder-zinc-600"
               >
             </div>
-          </div>
-
-          <!-- Dropdown Tipe Rekening -->
-          <div>
-            <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">
-              Tipe Rekening
-            </label>
-            <select
-              id="acc_type"
-              class="w-full px-3.5 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] bg-[#FFFFFF] dark:bg-[#09090B] text-sm font-medium outline-none"
-            >
-              <option value="bank">Bank Konvensional / Digital</option>
-              <option value="ewallet">E-Wallet (DANA, Gopay, Ovo, ShopeePay)</option>
-              <option value="cash">Uang Tunai / Kas Fisik</option>
-            </select>
           </div>
 
           <!-- Tombol Aksi -->
@@ -1392,7 +1461,7 @@ export function openAddAccountModal(options = {}) {
             </button>
             <button
               type="submit"
-              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85"
+              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 shadow-xs"
             >
               Simpan Rekening
             </button>
@@ -1413,7 +1482,7 @@ export function openAddAccountModal(options = {}) {
     e.preventDefault();
     const name = root.querySelector('#acc_name').value.trim();
     const balance = Number(root.querySelector('#acc_balance').value) || 0;
-    const type = root.querySelector('#acc_type').value;
+    const type = root.querySelector('#acc_type').value.trim() || 'Bank';
 
     if (!name) return;
 
@@ -1426,6 +1495,348 @@ export function openAddAccountModal(options = {}) {
 }
 
 export const openAddWalletModal = openAddAccountModal;
+
+/**
+ * Menampilkan Modal Edit Transaksi
+ * @param {Object} tx - Data transaksi yang akan diedit
+ * @param {Object} [options]
+ * @param {(updatedTx: Object) => void} [options.onSuccess]
+ * @param {() => void} [options.onDelete]
+ */
+export function openEditTransactionModal(tx, options = {}) {
+  const root = modalRoot();
+  if (!root || !tx) return;
+
+  const state = getState();
+  const accounts = state.accounts || [];
+  const categories = state.categories || [];
+
+  const txType = tx.type || 'expense';
+  const txAmount = Math.abs(Number(tx.amount) || 0);
+  const txDate = tx.date ? String(tx.date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const txCategory = tx.category || 'Umum';
+  const txNote = tx.note || tx.notes || '';
+  const currentWalletId = String(tx.wallet_id || tx.accountId || accounts[0]?.id || '');
+
+  // Cek apakah kategori saat ini ada di master categories pos anggaran
+  const isExistingCategory = categories.some((c) => c.name.toLowerCase() === txCategory.toLowerCase());
+  let editCatMode = isExistingCategory ? 'select' : 'custom';
+
+  // Siapkan opsi kategori
+  const categoryOptionsHtml = [
+    ...categories.map((c) => {
+      const isSel = c.name.toLowerCase() === txCategory.toLowerCase();
+      return `<option value="${c.name}" ${isSel ? 'selected' : ''}>${c.name}</option>`;
+    }),
+    `<option value="Lainnya" ${txCategory === 'Lainnya' ? 'selected' : ''}>Lainnya</option>`,
+  ].join('');
+
+  root.innerHTML = `
+    <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
+      <div class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl shadow-2xl border border-[#E4E4E7] dark:border-[#27272A] max-w-lg w-full p-6 space-y-5 my-auto animate-in fade-in zoom-in-95 duration-150">
+        
+        <!-- Header Modal -->
+        <div class="flex items-center justify-between pb-3 border-b border-[#E4E4E7] dark:border-[#27272A]">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] flex items-center justify-center">
+              <i data-lucide="pencil" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-[#09090B] dark:text-[#F4F4F5]">Edit Transaksi</h3>
+              <p class="text-xs text-[#71717A] dark:text-[#A1A1AA]">Perbarui detail mutasi atau hapus transaksi ini</p>
+            </div>
+          </div>
+          <button id="btn-close-edit-tx" type="button" class="p-2 text-[#71717A] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Form Edit Transaksi -->
+        <form id="form-edit-transaction" class="space-y-4">
+          
+          <!-- Tipe Transaksi: Pengeluaran / Pemasukan -->
+          <div>
+            <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Tipe Transaksi</label>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer ${txType === 'expense' ? 'border-rose-500/60 bg-rose-500/10 text-rose-700 dark:text-rose-400' : 'border-[#E4E4E7] dark:border-[#27272A] bg-zinc-50/50 dark:bg-zinc-800/50 text-[#71717A] dark:text-[#A1A1AA]'} font-bold text-sm transition-all">
+                <input type="radio" name="edit_tx_type" value="expense" ${txType === 'expense' ? 'checked' : ''} class="hidden">
+                <i data-lucide="arrow-down-left" class="w-4 h-4"></i> Pengeluaran
+              </label>
+              <label class="flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer ${txType === 'income' ? 'border-emerald-600/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'border-[#E4E4E7] dark:border-[#27272A] bg-zinc-50/50 dark:bg-zinc-800/50 text-[#71717A] dark:text-[#A1A1AA]'} font-bold text-sm transition-all">
+                <input type="radio" name="edit_tx_type" value="income" ${txType === 'income' ? 'checked' : ''} class="hidden">
+                <i data-lucide="arrow-up-right" class="w-4 h-4"></i> Pemasukan
+              </label>
+            </div>
+          </div>
+
+          <!-- Input Nominal -->
+          <div>
+            <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Nominal (Rp)</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm">Rp</span>
+              <input
+                id="edit_tx_amount"
+                type="number"
+                step="any"
+                min="0"
+                required
+                value="${txAmount}"
+                placeholder="0"
+                class="w-full pl-11 pr-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] bg-[#FFFFFF] dark:bg-[#09090B] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] font-extrabold text-lg outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              >
+            </div>
+          </div>
+
+          <!-- Kategori & Rekening Sumber -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider">
+                  Kategori
+                </label>
+                <!-- Toggle Mode: Pilih vs Ketik Bebas -->
+                <div class="inline-flex p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-[#E4E4E7] dark:border-[#27272A] text-[11px]">
+                  <button
+                    type="button"
+                    id="btn-edit-cat-mode-select"
+                    class="px-2 py-0.5 rounded-md font-semibold transition-all ${editCatMode === 'select' ? 'bg-white dark:bg-[#121214] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs' : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]'}"
+                  >
+                    Pilih Pos
+                  </button>
+                  <button
+                    type="button"
+                    id="btn-edit-cat-mode-custom"
+                    class="px-2 py-0.5 rounded-md font-semibold transition-all ${editCatMode === 'custom' ? 'bg-white dark:bg-[#121214] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs' : 'text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]'}"
+                  >
+                    Ketik Bebas
+                  </button>
+                </div>
+              </div>
+
+              <!-- Container Dropdown Pos Anggaran -->
+              <div id="container-edit-cat-select" class="${editCatMode === 'select' ? '' : 'hidden'}">
+                <select
+                  id="edit_tx_category"
+                  class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
+                >
+                  ${categoryOptionsHtml}
+                </select>
+              </div>
+
+              <!-- Container Input Teks Bebas (Tanpa Plafon Anggaran) -->
+              <div id="container-edit-cat-custom" class="${editCatMode === 'custom' ? '' : 'hidden'}">
+                <input
+                  id="edit_tx_category_custom"
+                  type="text"
+                  value="${editCatMode === 'custom' ? txCategory : ''}"
+                  placeholder="Ketik kategori bebas (tanpa pos plafon)..."
+                  class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none placeholder-zinc-300 dark:placeholder-zinc-600"
+                >
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Rekening / Dompet</label>
+              <select
+                id="edit_tx_account"
+                required
+                class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
+              >
+                ${accounts.length > 0
+                  ? accounts.map((a) => `<option value="${a.id}" ${String(a.id) === currentWalletId ? 'selected' : ''}>${a.name} (${a.provider || a.type || 'Bank'})</option>`).join('')
+                  : '<option value="acc-main" selected>Dompet Utama (Tunai)</option>'}
+              </select>
+            </div>
+          </div>
+
+          <!-- Tanggal & Catatan -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Tanggal</label>
+              <input
+                id="edit_tx_date"
+                type="date"
+                required
+                value="${txDate}"
+                class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
+              >
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Catatan</label>
+              <input
+                id="edit_tx_note"
+                type="text"
+                required
+                value="${txNote}"
+                placeholder="Contoh: Makan siang tim"
+                class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm bg-[#FFFFFF] dark:bg-[#09090B] placeholder-zinc-300 dark:placeholder-zinc-600 outline-none"
+              >
+            </div>
+          </div>
+
+          <!-- Tombol Aksi: Kiri Hapus (Sekunder Merah), Kanan Batal & Simpan -->
+          <div class="pt-3 flex items-center justify-between gap-3 border-t border-[#E4E4E7] dark:border-[#27272A]">
+            <button
+              id="btn-delete-from-edit"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-xs font-bold transition-colors cursor-pointer active:opacity-80 shadow-2xs"
+            >
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <span>Hapus Transaksi</span>
+            </button>
+
+            <div class="flex items-center gap-2">
+              <button
+                id="btn-cancel-edit-tx"
+                type="button"
+                class="px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center gap-2 shadow-xs"
+              >
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span>Simpan Perubahan</span>
+              </button>
+            </div>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  `;
+
+  renderIcons(root);
+
+  // Setup radio tipe transaksi toggle visual
+  const radioLabels = root.querySelectorAll('input[name="edit_tx_type"]');
+  radioLabels.forEach((radio) => {
+    radio.addEventListener('change', (e) => {
+      const isExpense = e.target.value === 'expense';
+      const expenseLabel = root.querySelector('input[name="edit_tx_type"][value="expense"]').parentElement;
+      const incomeLabel = root.querySelector('input[name="edit_tx_type"][value="income"]').parentElement;
+
+      if (isExpense) {
+        expenseLabel.className = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer border-rose-500/60 bg-rose-500/10 text-rose-700 dark:text-rose-400 font-bold text-sm transition-all';
+        incomeLabel.className = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 border-[#E4E4E7] dark:border-[#27272A] bg-zinc-50/50 dark:bg-zinc-800/50 text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm cursor-pointer transition-all';
+      } else {
+        incomeLabel.className = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer border-emerald-600/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold text-sm transition-all';
+        expenseLabel.className = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 border-[#E4E4E7] dark:border-[#27272A] bg-zinc-50/50 dark:bg-zinc-800/50 text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm cursor-pointer transition-all';
+      }
+    });
+  });
+
+  // Setup toggle mode kategori: Pilih Pos vs Ketik Bebas
+  const btnEditCatModeSelect = root.querySelector('#btn-edit-cat-mode-select');
+  const btnEditCatModeCustom = root.querySelector('#btn-edit-cat-mode-custom');
+  const containerEditCatSelect = root.querySelector('#container-edit-cat-select');
+  const containerEditCatCustom = root.querySelector('#container-edit-cat-custom');
+  const inputEditCatCustom = root.querySelector('#edit_tx_category_custom');
+
+  btnEditCatModeSelect?.addEventListener('click', () => {
+    editCatMode = 'select';
+    containerEditCatSelect?.classList.remove('hidden');
+    containerEditCatCustom?.classList.add('hidden');
+    btnEditCatModeSelect.className = 'px-2 py-0.5 rounded-md font-semibold transition-all bg-white dark:bg-[#121214] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs';
+    btnEditCatModeCustom.className = 'px-2 py-0.5 rounded-md font-semibold transition-all text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]';
+  });
+
+  btnEditCatModeCustom?.addEventListener('click', () => {
+    editCatMode = 'custom';
+    containerEditCatSelect?.classList.add('hidden');
+    containerEditCatCustom?.classList.remove('hidden');
+    btnEditCatModeCustom.className = 'px-2 py-0.5 rounded-md font-semibold transition-all bg-white dark:bg-[#121214] text-[#09090B] dark:text-[#F4F4F5] shadow-2xs';
+    btnEditCatModeSelect.className = 'px-2 py-0.5 rounded-md font-semibold transition-all text-[#71717A] dark:text-[#A1A1AA] hover:text-[#09090B] dark:hover:text-[#F4F4F5]';
+    inputEditCatCustom?.focus();
+  });
+
+  // Tombol Close & Batal
+  root.querySelector('#btn-close-edit-tx')?.addEventListener('click', closeModal);
+  root.querySelector('#btn-cancel-edit-tx')?.addEventListener('click', closeModal);
+
+  // Tombol Hapus Transaksi dari dalam Modal Edit (Memicu konfirmasi ganda)
+  root.querySelector('#btn-delete-from-edit')?.addEventListener('click', () => {
+    openConfirmDeleteTransactionModal({
+      transaction: tx,
+      onConfirm: async () => {
+        deleteTransaction(tx.id);
+        showToast('Transaksi berhasil dihapus', 'success');
+        try {
+          await deleteTransactionApi(tx.id);
+        } catch (err) {
+          console.warn('[EditModal] Gagal sinkronisasi DELETE ke Cloudflare Worker:', err);
+        }
+        closeModal();
+        if (typeof options.onDelete === 'function') {
+          options.onDelete();
+        }
+      },
+    });
+  });
+
+  // Form submit (Simpan Perubahan)
+  const form = root.querySelector('#form-edit-transaction');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const typeRadio = root.querySelector('input[name="edit_tx_type"]:checked');
+    const type = typeRadio ? typeRadio.value : txType;
+    const amount = Number(root.querySelector('#edit_tx_amount')?.value);
+
+    if (!amount || amount <= 0) {
+      alert('Nominal harus lebih besar dari 0');
+      return;
+    }
+
+    let category = '';
+    if (editCatMode === 'custom') {
+      category = inputEditCatCustom?.value?.trim() || 'Lainnya';
+    } else {
+      category = root.querySelector('#edit_tx_category')?.value || 'Lainnya';
+    }
+
+    const accountId = root.querySelector('#edit_tx_account')?.value || currentWalletId;
+    const selectedAccount = accounts.find((a) => String(a.id) === String(accountId));
+    const accountName = selectedAccount?.name || 'Rekening';
+    const date = root.querySelector('#edit_tx_date')?.value || txDate;
+    const note = root.querySelector('#edit_tx_note')?.value?.trim() || '';
+
+    const updatedTx = updateTransaction(tx.id, {
+      type,
+      amount,
+      category,
+      wallet_id: accountId,
+      accountId,
+      accountName,
+      date,
+      note,
+      notes: note,
+    });
+
+    showToast('Transaksi berhasil diperbarui', 'success');
+    closeModal();
+
+    try {
+      await updateTransactionApi(tx.id, {
+        type,
+        amount,
+        category,
+        wallet_id: accountId,
+        date,
+        note,
+      });
+    } catch (err) {
+      console.warn('[EditModal] Gagal sinkronisasi PUT ke Cloudflare Worker:', err);
+    }
+
+    if (typeof options.onSuccess === 'function') {
+      options.onSuccess(updatedTx);
+    }
+  });
+}
 
 /**
  * Menampilkan modal dialog konfirmasi sederhana untuk menghapus transaksi

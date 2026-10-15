@@ -58,14 +58,18 @@ const CARD_THEMES = {
 };
 
 /**
- * Menentukan badge tipe akun (Bank / E-Wallet / Tunai).
+ * Menentukan badge tipe akun secara dinamis sesuai input user (misal: E-Wallet, Bank Digital, Tunai).
  * @param {Object} account
- * @returns {'Bank' | 'E-Wallet' | 'Tunai'}
+ * @returns {string}
  */
 function resolveTypeBadge(account) {
-  const type = String(account.type || '').toLowerCase();
-  if (type === 'ewallet' || type.includes('wallet')) return 'E-Wallet';
-  if (type === 'cash' || type.includes('tunai')) return 'Tunai';
+  if (account.type && String(account.type).trim()) {
+    const raw = String(account.type).trim();
+    if (raw.toLowerCase() === 'bank') return 'Bank';
+    if (raw.toLowerCase() === 'ewallet') return 'E-Wallet';
+    if (raw.toLowerCase() === 'cash') return 'Tunai';
+    return raw;
+  }
   return 'Bank';
 }
 

@@ -3,7 +3,7 @@ import { store, getState, subscribe, deleteTransaction } from '../state/store.js
 import { formatRupiah, maskValue } from '../utils/formatters.js';
 import { formatDateIndo } from '../utils/dates.js';
 import { renderIcons } from '../utils/icons.js';
-import { openConfirmDeleteTransactionModal } from './Modals.js';
+import { openConfirmDeleteTransactionModal, openEditTransactionModal } from './Modals.js';
 import { deleteTransactionApi } from '../services/api.js';
 import { showToast } from '../utils/toast.js';
 
@@ -19,6 +19,7 @@ export class TransactionList {
    * @param {boolean} [options.showFilter=true] - Menampilkan bilah filter kategori cepat.
    * @param {string} [options.title] - Judul section transaksi.
    * @param {() => void} [options.onViewAll] - Callback saat "Lihat Semua di Aktivitas" diklik.
+   * @param {boolean} [options.allowEdit] - Menampilkan tombol edit transaksi (default: true jika limit null, false jika widget ringkasan)
    */
   constructor(options) {
     if (!options || !options.container) {
@@ -31,6 +32,7 @@ export class TransactionList {
     this.showFilter = options.showFilter !== false;
     this.title = options.title || 'Riwayat Transaksi';
     this.onViewAll = options.onViewAll || (() => {});
+    this.allowEdit = options.allowEdit !== undefined ? Boolean(options.allowEdit) : (this.limit === null);
     this.currentFilter = 'all'; // Pilihan: 'all' | 'expense' | 'income'
 
     // Langganan pembaruan state store
@@ -73,7 +75,22 @@ export class TransactionList {
       viewAllBtn.addEventListener('click', () => this.onViewAll());
     }
 
-    // Tombol Hapus Transaksi (Konfirmasi & Hapus)
+    // Tombol Edit Transaksi (Membuka Modal Edit Transaksi)
+    const editButtons = this.container.querySelectorAll('[data-action="edit-tx"]');
+    editButtons.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const txId = btn.getAttribute('data-tx-id');
+        const state = getState();
+        const tx = (state.transactions || []).find((t) => String(t.id) === String(txId));
+        if (!tx) return;
+
+        openEditTransactionModal(tx);
+      });
+    });
+
+    // Tombol Hapus Transaksi (Konfirmasi & Hapus - fallback)
     const deleteButtons = this.container.querySelectorAll('[data-action="delete-tx"]');
     deleteButtons.forEach((btn) => {
       btn.addEventListener('click', (e) => {
@@ -259,6 +276,8 @@ export class TransactionList {
                     const formattedDate = formatDateIndo(tx.date);
                     const rawCategory = tx.category || 'Umum';
                     const maskedCategory = maskValue(rawCategory, isMasked, '••••••••');
+                    const matchedAccount = (state.accounts || []).find((a) => String(a.id) === String(tx.wallet_id || tx.accountId));
+                    const displayAccountName = tx.accountName || matchedAccount?.name || 'Rekening';
 
                     return `
                     <article class="p-3 sm:p-3.5 rounded-xl bg-[#F9F9F8] dark:bg-[#09090B]/60 border border-[#E4E4E7] dark:border-[#27272A] text-[#09090B] dark:text-[#F4F4F5] hover:bg-[#F4F4F5] dark:hover:bg-[#121214] transition-colors flex items-center justify-between gap-3 group">
@@ -287,13 +306,13 @@ export class TransactionList {
                             <span>${formattedDate}</span>
                             <span>•</span>
                             <span class="text-[#71717A] dark:text-[#A1A1AA] font-medium truncate max-w-[140px] sm:max-w-[200px]">
-                              ${tx.accountName || 'Rekening Utama'}
+                              ${displayAccountName}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      <!-- Sisi Kanan: Nominal Transaksi & Tombol Hapus -->
+                      <!-- Sisi Kanan: Nominal Transaksi & Tombol Edit -->
                       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
                         <div class="text-right">
                           <p class="text-sm sm:text-base font-extrabold tracking-tight ${
@@ -306,17 +325,24 @@ export class TransactionList {
                           </span>
                         </div>
 
-                        <!-- Tombol Hapus Transaksi -->
+                        ${
+                          this.allowEdit
+                            ? `
+                        <!-- Tombol Edit Transaksi -->
                         <button
                           type="button"
-                          data-action="delete-tx"
+                          data-action="edit-tx"
                           data-tx-id="${tx.id}"
-                          title="Hapus Transaksi"
-                          aria-label="Hapus Transaksi"
-                          class="p-2 rounded-xl text-[#71717A] hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer active:opacity-80"
+                          title="Edit Transaksi"
+                          aria-label="Edit Transaksi"
+                          class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] bg-[#FFFFFF] dark:bg-[#121214] hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-[#09090B] dark:text-[#F4F4F5] transition-colors cursor-pointer active:opacity-80 shadow-2xs"
                         >
-                          <i data-lucide="trash-2" class="w-4 h-4"></i>
+                          <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                          <span>Edit</span>
                         </button>
+                        `
+                            : ''
+                        }
                       </div>
 
                     </article>
