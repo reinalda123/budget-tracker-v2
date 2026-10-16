@@ -216,18 +216,18 @@ export function openTransactionModal(options = {}) {
 
           <!-- Tanggal & Catatan -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+            <div class="w-full max-w-full min-w-0">
               <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Tanggal</label>
               <input
                 id="tx_date"
                 type="date"
                 required
                 value="${initialDate}"
-                class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
+                class="w-full max-w-full min-w-0 box-border px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
               >
             </div>
 
-            <div>
+            <div class="w-full max-w-full min-w-0">
               <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Catatan</label>
               <input
                 id="tx_note"
@@ -235,27 +235,27 @@ export function openTransactionModal(options = {}) {
                 required
                 value="${initialNote}"
                 placeholder="Contoh: Makan siang tim"
-                class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm bg-[#FFFFFF] dark:bg-[#09090B] placeholder-zinc-300 dark:placeholder-zinc-600 outline-none"
+                class="w-full max-w-full min-w-0 box-border px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm bg-[#FFFFFF] dark:bg-[#09090B] placeholder-zinc-300 dark:placeholder-zinc-600 outline-none"
               >
             </div>
           </div>
 
-          <!-- Tombol Aksi Submit -->
-          <div class="pt-3 flex items-center justify-end gap-3 border-t border-[#E4E4E7] dark:border-[#27272A]">
+          <!-- Tombol Aksi Submit: Grid 2 Kolom Seimbang di Mobile (< sm), Flex Rapat Kanan di Desktop -->
+          <div class="pt-3 grid grid-cols-2 gap-2.5 sm:flex sm:items-center sm:justify-end sm:gap-3 border-t border-[#E4E4E7] dark:border-[#27272A]">
             <button
               id="btn-cancel-tx"
               type="button"
-              class="px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer"
+              class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer text-center flex items-center justify-center"
             >
               Batal
             </button>
             <button
               id="btn-save-verification"
               type="submit"
-              class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center gap-2"
+              class="w-full sm:w-auto px-4 sm:px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center justify-center gap-1.5 sm:gap-2 shadow-xs text-center"
             >
-              <i data-lucide="check" class="w-4 h-4"></i>
-              <span>Simpan Transaksi</span>
+              <i data-lucide="check" class="w-4 h-4 shrink-0"></i>
+              <span class="truncate">Simpan Transaksi</span>
             </button>
           </div>
 
@@ -1817,18 +1817,18 @@ export function openEditTransactionModal(tx, options = {}) {
 
           <!-- Tanggal & Catatan -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+            <div class="w-full max-w-full min-w-0">
               <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Tanggal</label>
               <input
                 id="edit_tx_date"
                 type="date"
                 required
                 value="${txDate}"
-                class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
+                class="w-full max-w-full min-w-0 box-border px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
               >
             </div>
 
-            <div>
+            <div class="w-full max-w-full min-w-0">
               <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Catatan</label>
               <input
                 id="edit_tx_note"
@@ -1836,38 +1836,40 @@ export function openEditTransactionModal(tx, options = {}) {
                 required
                 value="${txNote}"
                 placeholder="Contoh: Makan siang tim"
-                class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm bg-[#FFFFFF] dark:bg-[#09090B] placeholder-zinc-300 dark:placeholder-zinc-600 outline-none"
+                class="w-full max-w-full min-w-0 box-border px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm bg-[#FFFFFF] dark:bg-[#09090B] placeholder-zinc-300 dark:placeholder-zinc-600 outline-none"
               >
             </div>
           </div>
 
-          <!-- Tombol Aksi: Kiri Hapus (Sekunder Merah), Kanan Batal & Simpan -->
-          <div class="pt-3 flex items-center justify-between gap-3 border-t border-[#E4E4E7] dark:border-[#27272A]">
-            <button
-              id="btn-delete-from-edit"
-              type="button"
-              class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-xs font-bold transition-colors cursor-pointer active:opacity-80 shadow-2xs"
-            >
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-              <span>Hapus Transaksi</span>
-            </button>
-
-            <div class="flex items-center gap-2">
+          <!-- Tombol Aksi: Mobile (Baris 1: Batal & Simpan, Baris 2: Hapus Mandiri Full-Width) & Desktop (Sejajar Kiri-Kanan) -->
+          <div class="pt-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 md:gap-3 border-t border-[#E4E4E7] dark:border-[#27272A]">
+            <!-- Baris Atas Mobile: Grid 2 Kolom Seimbang (Batal & Simpan Perubahan) / Kanan Desktop -->
+            <div class="grid grid-cols-2 gap-2.5 w-full md:w-auto md:flex md:items-center md:gap-2 order-1 md:order-2">
               <button
                 id="btn-cancel-edit-tx"
                 type="button"
-                class="px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer"
+                class="w-full md:w-auto px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer text-center flex items-center justify-center"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                class="px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center gap-2 shadow-xs"
+                class="w-full md:w-auto px-4 sm:px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center justify-center gap-1.5 sm:gap-2 shadow-xs text-center"
               >
-                <i data-lucide="check" class="w-4 h-4"></i>
-                <span>Simpan Perubahan</span>
+                <i data-lucide="check" class="w-4 h-4 shrink-0"></i>
+                <span class="truncate">Simpan Perubahan</span>
               </button>
             </div>
+
+            <!-- Baris Bawah Mobile: Tombol Hapus Transaksi (Membentang Penuh w-full) / Kiri Desktop -->
+            <button
+              id="btn-delete-from-edit"
+              type="button"
+              class="w-full md:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-xs font-bold transition-colors cursor-pointer active:opacity-80 shadow-2xs order-2 md:order-1"
+            >
+              <i data-lucide="trash-2" class="w-4 h-4 shrink-0"></i>
+              <span>Hapus Transaksi</span>
+            </button>
           </div>
 
         </form>

@@ -299,6 +299,49 @@ export class ReportView {
           </div>
         </div>
 
+        <!-- 2.1. Posisi Saldo per Rekening / Dompet -->
+        <div style="margin-bottom: 24px;">
+          <h2 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin: 0 0 10px 0;">Posisi Saldo per Rekening / Dompet</h2>
+          <table style="width: 100%; text-align: left; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 12px;">
+            <thead>
+              <tr style="background-color: #f1f5f9; color: #334155; font-weight: 700; border-bottom: 1px solid #cbd5e1;">
+                <th style="padding: 8px 10px; width: 40px; text-align: center; border-right: 1px solid #cbd5e1;">No</th>
+                <th style="padding: 8px 10px; border-right: 1px solid #cbd5e1;">Nama Rekening</th>
+                <th style="padding: 8px 10px; width: 140px; border-right: 1px solid #cbd5e1;">Tipe Rekening</th>
+                <th style="padding: 8px 10px; text-align: right; width: 160px;">Saldo Terkini</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                accounts.length === 0
+                  ? `<tr><td colspan="4" style="padding: 12px; text-align: center; color: #94a3b8; font-style: italic;">Tidak ada data rekening aktif</td></tr>`
+                  : accounts
+                      .map(
+                        (acc, idx) => `
+                      <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 8px 10px; text-align: center; color: #64748b; border-right: 1px solid #cbd5e1;">${idx + 1}</td>
+                        <td style="padding: 8px 10px; font-weight: 600; color: #1e293b; border-right: 1px solid #cbd5e1;">${acc.name || 'Rekening'}</td>
+                        <td style="padding: 8px 10px; color: #475569; border-right: 1px solid #cbd5e1;">${acc.type || 'Bank'}</td>
+                        <td style="padding: 8px 10px; text-align: right; font-weight: 700; color: #0f172a;">${formatRupiah(acc.balance || 0)}</td>
+                      </tr>
+                    `
+                      )
+                      .join('')
+              }
+            </tbody>
+            <tfoot>
+              <tr style="background-color: #f8fafc; font-weight: 700; border-top: 2px solid #cbd5e1;">
+                <td colspan="3" style="padding: 10px; text-align: right; color: #334155; border-right: 1px solid #cbd5e1;">
+                  Total Likuiditas / Saldo Keseluruhan
+                </td>
+                <td style="padding: 10px; text-align: right; font-size: 13px; font-weight: 800; color: #4338ca;">
+                  ${formatRupiah(totalBalance)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
         <!-- 3. Tabel Rekapitulasi Kategori -->
         <div style="margin-bottom: 24px;">
           <h2 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin: 0 0 10px 0;">Rekapitulasi Pengeluaran per Kategori</h2>

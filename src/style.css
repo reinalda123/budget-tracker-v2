@@ -120,3 +120,53 @@ input[type="number"] {
 .dark .custom-scrollbar {
   scrollbar-color: rgba(113, 113, 122, 0.4) transparent;
 }
+
+/* Hilangkan scrollbar visual native browser KHUSUS pada tampilan mobile (< 768px / layar sentuh) */
+@media (max-width: 767px) {
+  html,
+  body,
+  #app,
+  #modal-backdrop,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-auto,
+  .custom-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  #app::-webkit-scrollbar,
+  #modal-backdrop::-webkit-scrollbar,
+  .overflow-y-auto::-webkit-scrollbar,
+  .overflow-x-auto::-webkit-scrollbar,
+  .overflow-auto::-webkit-scrollbar,
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+}
+
+/* Utilitas class no-scrollbar */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Presisi input type="date" mobile: cegah overflow / min-width bawaan browser */
+input[type="date"] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+
