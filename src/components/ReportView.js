@@ -2,6 +2,7 @@
 import Chart from 'chart.js/auto';
 import { toJpeg } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { store, getState, subscribe } from '../state/store.js';
 import { formatRupiah, maskValue } from '../utils/formatters.js';
 import { formatDateIndo } from '../utils/dates.js';
@@ -375,55 +376,10 @@ export class ReportView {
           </table>
         </div>
 
-        <!-- 4. Tabel Riwayat Mutasi -->
-        <div>
-          <h2 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin: 0 0 10px 0;">Riwayat Mutasi Transaksi</h2>
-          <table style="width: 100%; text-align: left; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 12px;">
-            <thead>
-              <tr style="background-color: #f1f5f9; color: #334155; font-weight: 700; border-bottom: 1px solid #cbd5e1;">
-                <th style="padding: 8px 10px; width: 95px; border-right: 1px solid #cbd5e1;">Tanggal</th>
-                <th style="padding: 8px 10px; width: 140px; border-right: 1px solid #cbd5e1;">Dompet</th>
-                <th style="padding: 8px 10px; width: 130px; border-right: 1px solid #cbd5e1;">Kategori</th>
-                <th style="padding: 8px 10px; border-right: 1px solid #cbd5e1;">Keterangan</th>
-                <th style="padding: 8px 10px; text-align: right; width: 120px;">Nominal</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${
-                monthTx.length === 0
-                  ? `<tr><td colspan="5" style="padding: 12px; text-align: center; color: #94a3b8; font-style: italic;">Tidak ada riwayat transaksi pada periode ini</td></tr>`
-                  : monthTx
-                      .map((tx) => {
-                        const dateFormatted = formatDateIndo(tx.date, {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        });
-                        const isInc = tx.type === 'income';
-                        const matchedAccount = accounts.find((a) => String(a.id) === String(tx.wallet_id || tx.accountId));
-                        const accountName = tx.accountName || matchedAccount?.name || 'Rekening';
-                        return `
-                        <tr style="border-bottom: 1px solid #e2e8f0;">
-                          <td style="padding: 8px 10px; color: #475569; border-right: 1px solid #cbd5e1; white-space: nowrap;">${dateFormatted}</td>
-                          <td style="padding: 8px 10px; font-weight: 500; color: #334155; border-right: 1px solid #cbd5e1;">${accountName}</td>
-                          <td style="padding: 8px 10px; color: #334155; border-right: 1px solid #cbd5e1;">${tx.category || '-'}</td>
-                          <td style="padding: 8px 10px; color: #475569; border-right: 1px solid #cbd5e1;">${tx.note || '-'}</td>
-                          <td style="padding: 8px 10px; text-align: right; font-weight: 700; white-space: nowrap; color: ${isInc ? '#15803d' : '#b91c1c'};">
-                            ${isInc ? '+ ' : '- '}${formatRupiah(tx.amount)}
-                          </td>
-                        </tr>
-                      `;
-                      })
-                      .join('')
-              }
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Footer Dokumen -->
-        <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8;">
-          <span>Budget Tracker - Laporan Finansial Mandiri</span>
-          <span>Dicetak otomatis via browser</span>
+        <!-- Footer Halaman 1 (Ringkasan Eksekutif) -->
+        <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8;">
+          <span>Budget Tracker Pro - Ringkasan Eksekutif Keuangan Bulanan</span>
+          <span>Halaman 1 (Ringkasan) • Rincian Mutasi Lengkap di Halaman Berikutnya</span>
         </div>
       </div>
     `;
@@ -433,17 +389,19 @@ export class ReportView {
     // Inisialisasi Chart.js Donut
     this.renderDonutChart(sortedCategories, isMasked);
 
-    // Hubungkan event listener unduh PDF langsung (html-to-image + jsPDF)
-    this.attachEvents(selectedMonth);
+    // Hubungkan event listener unduh PDF langsung (html-to-image + autoTable multi-page jsPDF)
+    this.attachEvents(selectedMonth, { monthTx, accounts, periodLabel, printDateLabel });
   }
 
   /**
-   * Menghubungkan interaksi tombol ekspor PDF langsung dengan html-to-image dan jsPDF.
+   * Menghubungkan interaksi tombol ekspor PDF langsung dengan html-to-image dan jsPDF (Multi-Page & Auto-Pagination).
    * @param {string} selectedMonth
+   * @param {Object} [reportData]
    */
-  attachEvents(selectedMonth) {
+  attachEvents(selectedMonth, reportData = {}) {
     const downloadBtn = this.container.querySelector('#btn-download-pdf');
     const downloadBtnText = this.container.querySelector('#btn-download-pdf-text');
+    const { monthTx = [], accounts = [], periodLabel = '', printDateLabel = '' } = reportData;
 
     const handleDownloadPDF = async () => {
       const element = document.getElementById('report-pdf-template');
@@ -460,13 +418,13 @@ export class ReportView {
       try {
         setIsExporting(true);
 
-        // Tampilkan elemen sesaat ke opacity 1 untuk snapshot
+        // Tampilkan elemen sesaat ke opacity 1 untuk snapshot Halaman 1
         element.style.opacity = '1';
 
-        // Render ke JPEG dengan kompresi quality 0.85 dan pixelRatio 1.5
+        // Render Halaman 1 ke JPEG dengan kompresi quality 0.92 dan pixelRatio 2 (tajam & proporsional)
         const dataUrl = await toJpeg(element, {
-          quality: 0.85,
-          pixelRatio: 1.5,
+          quality: 0.92,
+          pixelRatio: 2,
           backgroundColor: '#ffffff',
           cacheBust: true,
         });
@@ -488,10 +446,129 @@ export class ReportView {
         img.src = dataUrl;
         await new Promise((resolve) => (img.onload = resolve));
 
+        // 1. Render Halaman 1 (Ringkasan Eksekutif) sesuai proporsi asli (Matikan kompresi paksa / bebas gepeng)
         const imgWidth = pageWidth;
         const imgHeight = (img.height * pageWidth) / img.width;
 
-        pdf.addImage(dataUrl, 'JPEG', 0, 0, imgWidth, Math.min(imgHeight, pageHeight), undefined, 'FAST');
+        pdf.addImage(dataUrl, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+
+        // 2. Halaman 2 dan seterusnya (Dinamis / Multi-Page): Tabel Riwayat Mutasi Transaksi
+        pdf.addPage('a4', 'portrait');
+
+        // Header Dokumen Halaman 2 (Standar Laporan Perbankan Resmi)
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(14);
+        pdf.setTextColor(15, 23, 42); // #0f172a
+        pdf.text('Riwayat Mutasi Transaksi', 14, 18);
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(71, 85, 105); // #475569
+        pdf.text(`Periode: ${periodLabel} • Dicetak: ${printDateLabel}`, 14, 23);
+
+        pdf.setDrawColor(203, 213, 225); // #cbd5e1
+        pdf.setLineWidth(0.3);
+        pdf.line(14, 26, pageWidth - 14, 26);
+
+        // Data baris transaksi untuk autoTable
+        const tableBody = monthTx.length === 0
+          ? [['-', '-', 'Tidak ada riwayat mutasi transaksi pada periode ini', '-', '-']]
+          : monthTx.map((tx) => {
+              const dateFormatted = formatDateIndo(tx.date, {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              });
+              const isInc = tx.type === 'income';
+              const matchedAccount = accounts.find((a) => String(a.id) === String(tx.wallet_id || tx.accountId));
+              const accountName = tx.accountName || matchedAccount?.name || 'Rekening';
+              const amountStr = `${isInc ? '+ ' : '- '}${formatRupiah(tx.amount)}`;
+              return [
+                dateFormatted,
+                accountName,
+                tx.category || '-',
+                tx.note || '-',
+                amountStr,
+              ];
+            });
+
+        // AutoTable pagination: otomatis mengalirkan transaksi panjang ke halaman-halaman berikutnya
+        autoTable(pdf, {
+          startY: 30,
+          head: [['Tanggal', 'Rekening / Dompet', 'Kategori', 'Keterangan', 'Nominal']],
+          body: tableBody,
+          theme: 'grid',
+          styles: {
+            font: 'helvetica',
+            fontSize: 8.5,
+            cellPadding: 3,
+            textColor: [51, 65, 85], // #334155
+            lineColor: [226, 232, 240], // #e2e8f0
+            lineWidth: 0.2,
+          },
+          headStyles: {
+            fillColor: [79, 70, 229], // #4f46e5 (Indigo)
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            fontSize: 9,
+            halign: 'left',
+          },
+          columnStyles: {
+            0: { cellWidth: 26, halign: 'center' }, // Tanggal
+            1: { cellWidth: 32 },                  // Rekening
+            2: { cellWidth: 32 },                  // Kategori
+            3: { cellWidth: 'auto' },              // Keterangan
+            4: { cellWidth: 38, halign: 'right', fontStyle: 'bold' }, // Nominal
+          },
+          alternateRowStyles: {
+            fillColor: [248, 250, 252], // #f8fafc
+          },
+          margin: { top: 24, left: 14, right: 14, bottom: 20 },
+          showHead: 'everyPage',
+          didParseCell: (data) => {
+            if (data.section === 'body' && data.column.index === 4) {
+              const cellText = String(data.cell.raw || '');
+              if (cellText.startsWith('+')) {
+                data.cell.styles.textColor = [21, 128, 61]; // #15803d Emerald 700
+              } else if (cellText.startsWith('-')) {
+                data.cell.styles.textColor = [185, 28, 28]; // #b91c1c Rose 700
+              }
+            }
+          },
+          didDrawPage: (data) => {
+            // Header berulang otomatis pada halaman mutasi lanjutan (halaman 3, 4, dst)
+            if (data.pageNumber > 2) {
+              pdf.setFont('helvetica', 'normal');
+              pdf.setFontSize(8.5);
+              pdf.setTextColor(148, 163, 184); // #94a3b8
+              pdf.text(`Riwayat Mutasi Transaksi (Lanjutan) - ${periodLabel}`, 14, 15);
+              pdf.setDrawColor(226, 232, 240);
+              pdf.setLineWidth(0.2);
+              pdf.line(14, 17, pageWidth - 14, 17);
+            }
+          },
+        });
+
+        // 3. Cantumkan nomor halaman dan footer standar perbankan di seluruh halaman
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(8);
+          pdf.setTextColor(148, 163, 184); // #94a3b8
+          pdf.text(
+            'Budget Tracker Pro - Dokumen Laporan Keuangan Resmi',
+            14,
+            pageHeight - 9
+          );
+          pdf.text(
+            `Halaman ${i} dari ${totalPages}`,
+            pageWidth - 14,
+            pageHeight - 9,
+            { align: 'right' }
+          );
+        }
+
         pdf.save(`Laporan_Keuangan_${selectedMonth || new Date().toISOString().slice(0, 7)}.pdf`);
       } catch (err) {
         console.error('Gagal membuat PDF:', err);

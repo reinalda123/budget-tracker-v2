@@ -216,13 +216,14 @@ export function openTransactionModal(options = {}) {
 
           <!-- Tanggal & Catatan -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="w-full max-w-full min-w-0">
+            <div class="w-full max-w-full min-w-0 overflow-hidden box-border">
               <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Tanggal</label>
               <input
                 id="tx_date"
                 type="date"
                 required
                 value="${initialDate}"
+                style="-webkit-appearance: none; appearance: none; display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;"
                 class="w-full max-w-full min-w-0 box-border px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
               >
             </div>
@@ -245,17 +246,18 @@ export function openTransactionModal(options = {}) {
             <button
               id="btn-cancel-tx"
               type="button"
-              class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer text-center flex items-center justify-center"
+              class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer text-center flex items-center justify-center whitespace-nowrap"
             >
               Batal
             </button>
             <button
               id="btn-save-verification"
               type="submit"
-              class="w-full sm:w-auto px-4 sm:px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center justify-center gap-1.5 sm:gap-2 shadow-xs text-center"
+              class="w-full sm:w-auto px-4 sm:px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center justify-center gap-1.5 sm:gap-2 shadow-xs text-center whitespace-nowrap"
             >
               <i data-lucide="check" class="w-4 h-4 shrink-0"></i>
-              <span class="truncate">Simpan Transaksi</span>
+              <span class="inline md:hidden">Simpan</span>
+              <span class="hidden md:inline">Simpan Transaksi</span>
             </button>
           </div>
 
@@ -1817,13 +1819,14 @@ export function openEditTransactionModal(tx, options = {}) {
 
           <!-- Tanggal & Catatan -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="w-full max-w-full min-w-0">
+            <div class="w-full max-w-full min-w-0 overflow-hidden box-border">
               <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Tanggal</label>
               <input
                 id="edit_tx_date"
                 type="date"
                 required
                 value="${txDate}"
+                style="-webkit-appearance: none; appearance: none; display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;"
                 class="w-full max-w-full min-w-0 box-border px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
               >
             </div>
@@ -1848,16 +1851,17 @@ export function openEditTransactionModal(tx, options = {}) {
               <button
                 id="btn-cancel-edit-tx"
                 type="button"
-                class="w-full md:w-auto px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer text-center flex items-center justify-center"
+                class="w-full md:w-auto px-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] text-[#71717A] dark:text-[#A1A1AA] hover:bg-zinc-100 dark:hover:bg-zinc-800 font-semibold text-sm transition-colors cursor-pointer text-center flex items-center justify-center whitespace-nowrap"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                class="w-full md:w-auto px-4 sm:px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center justify-center gap-1.5 sm:gap-2 shadow-xs text-center"
+                class="w-full md:w-auto px-4 sm:px-5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-white dark:text-[#09090B] font-semibold text-sm transition-all cursor-pointer active:opacity-85 flex items-center justify-center gap-1.5 sm:gap-2 shadow-xs text-center whitespace-nowrap"
               >
                 <i data-lucide="check" class="w-4 h-4 shrink-0"></i>
-                <span class="truncate">Simpan Perubahan</span>
+                <span class="inline md:hidden">Simpan</span>
+                <span class="hidden md:inline">Simpan Perubahan</span>
               </button>
             </div>
 

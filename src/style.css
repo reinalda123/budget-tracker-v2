@@ -161,9 +161,14 @@ input[type="number"] {
   height: 0 !important;
 }
 
-/* Presisi input type="date" mobile: cegah overflow / min-width bawaan browser */
+/* Presisi input type="date" mobile / iOS Safari WebKit Reset */
 input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
 }
 input[type="date"]::-webkit-date-and-time-value {
