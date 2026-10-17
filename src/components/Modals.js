@@ -2400,57 +2400,74 @@ export function openChatAiModal(options = {}) {
 
   const dailyBurnRate = currentDay > 0 ? Math.round(thisMonthExpenses / currentDay) : 0;
 
+  const getWelcomeMessageHtml = () => `
+    <!-- Welcome Message from AI -->
+    <div class="flex items-start gap-2.5">
+      <div class="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+        <i data-lucide="bot" class="w-4 h-4"></i>
+      </div>
+      <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[88%] space-y-2 border border-zinc-200/60 dark:border-zinc-700/60">
+        <p>Halo! Saya <strong>AI Finansial</strong> Anda. 🤖</p>
+        <p class="text-[#71717A] dark:text-[#A1A1AA] leading-relaxed">
+          Saya terhubung langsung ke data mutasi Cloudflare D1 Anda. Silakan tanyakan ringkasan keuangan, analisis pos pengeluaran, atau evaluasi burn rate!
+        </p>
+        <div class="pt-2 border-t border-zinc-200 dark:border-zinc-700/60 flex flex-wrap items-center justify-between gap-1 text-[11px] text-[#71717A] dark:text-[#A1A1AA]">
+          <span>Total Saldo: <strong class="text-[#09090B] dark:text-[#F4F4F5]">${formatRupiah(totalBalance)}</strong></span>
+          <span>Pengeluaran: <strong class="text-rose-600 dark:text-rose-400">${formatRupiah(thisMonthExpenses)}</strong></span>
+        </div>
+      </div>
+    </div>
+  `;
+
   root.innerHTML = `
     <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
       <div id="chat-ai-card" class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl shadow-2xl border border-[#E4E4E7] dark:border-[#27272A] max-w-lg w-full flex flex-col h-[85vh] max-h-[640px] my-auto animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
         
         <!-- Header Modal -->
-        <div class="relative flex items-center justify-between p-4 sm:p-5 pr-12 sm:pr-14 border-b border-[#E4E4E7] dark:border-[#27272A] shrink-0 bg-white/50 dark:bg-[#121214]/50 backdrop-blur-md">
-          <div class="flex items-center gap-3 min-w-0 pr-1">
+        <div class="flex items-center justify-between p-3.5 sm:p-5 border-b border-[#E4E4E7] dark:border-[#27272A] shrink-0 bg-white/50 dark:bg-[#121214]/50 backdrop-blur-md">
+          <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 mr-2 sm:mr-3">
             <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
               <i data-lucide="bot" class="w-5 h-5"></i>
             </div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <h3 class="text-sm sm:text-base font-bold text-[#09090B] dark:text-[#F4F4F5] truncate">Tanya AI Finansial</h3>
+                <h3 class="text-sm sm:text-base font-bold text-[#09090B] dark:text-[#F4F4F5] truncate">AI Chat Finansial</h3>
                 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                   Online
                 </span>
               </div>
-              <p class="text-[11px] text-[#71717A] dark:text-[#A1A1AA] truncate">Asisten cerdas analisis anggaran & evaluasi keuangan</p>
+              <p class="text-[11px] text-[#71717A] dark:text-[#A1A1AA] truncate">Konsultasi & Analisis Anggaran</p>
             </div>
           </div>
-          <button
-            id="btn-close-chat-ai"
-            type="button"
-            title="Tutup Modal"
-            class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[#71717A] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-          >
-            <i data-lucide="x" class="w-4 h-4"></i>
-          </button>
+
+          <!-- Kontainer Aksi Pojok Kanan Atas -->
+          <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <!-- Tombol Trash2 (Clear Chat) -->
+            <button
+              id="btn-clear-chat-ai"
+              type="button"
+              title="Bersihkan Obrolan"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer active:scale-95"
+            >
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Tombol X (Close Modal) -->
+            <button
+              id="btn-close-chat-ai"
+              type="button"
+              title="Tutup Modal"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-[#71717A] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer active:scale-95"
+            >
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
 
         <!-- Chat Stream Container -->
         <div id="chat-ai-messages" class="flex-1 p-4 sm:p-5 overflow-y-auto space-y-3.5 text-xs sm:text-sm">
-          
-          <!-- Welcome Message from AI -->
-          <div class="flex items-start gap-2.5">
-            <div class="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
-              <i data-lucide="bot" class="w-4 h-4"></i>
-            </div>
-            <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[88%] space-y-2 border border-zinc-200/60 dark:border-zinc-700/60">
-              <p>Halo! Saya <strong>Asisten AI Finansial</strong> Anda. 🤖</p>
-              <p class="text-[#71717A] dark:text-[#A1A1AA] leading-relaxed">
-                Saya terhubung langsung ke data mutasi Cloudflare D1 Anda. Silakan tanyakan ringkasan keuangan, analisis pos pengeluaran, atau evaluasi burn rate!
-              </p>
-              <div class="pt-2 border-t border-zinc-200 dark:border-zinc-700/60 flex flex-wrap items-center justify-between gap-1 text-[11px] text-[#71717A] dark:text-[#A1A1AA]">
-                <span>Total Saldo: <strong class="text-[#09090B] dark:text-[#F4F4F5]">${formatRupiah(totalBalance)}</strong></span>
-                <span>Pengeluaran: <strong class="text-rose-600 dark:text-rose-400">${formatRupiah(thisMonthExpenses)}</strong></span>
-              </div>
-            </div>
-          </div>
-
+          ${getWelcomeMessageHtml()}
         </div>
 
         <!-- Quick Suggestion Chips -->
@@ -2676,6 +2693,27 @@ export function openChatAiModal(options = {}) {
         handleSendMessage(prompt);
       }
     });
+  });
+
+  // Event bersihkan obrolan (Clear Chat UI)
+  const clearChatBtn = root.querySelector('#btn-clear-chat-ai');
+  clearChatBtn?.addEventListener('click', () => {
+    const isConfirmed = window.confirm('Bersihkan semua riwayat percakapan di layar?');
+    if (!isConfirmed) return;
+
+    if (messagesContainer) {
+      messagesContainer.innerHTML = `
+        <div class="py-1 text-center animate-in fade-in duration-150">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-[#71717A] dark:text-[#A1A1AA] border border-zinc-200/60 dark:border-zinc-700/60">
+            <i data-lucide="trash-2" class="w-3 h-3 text-rose-500"></i>
+            Riwayat percakapan dibersihkan
+          </span>
+        </div>
+        ${getWelcomeMessageHtml()}
+      `;
+      renderIcons(messagesContainer);
+      scrollToBottom();
+    }
   });
 
   // Close handlers
