@@ -44,6 +44,17 @@ CREATE TABLE IF NOT EXISTS budgets (
   month_year TEXT NOT NULL
 );
 
+-- Tabel Riwayat Percakapan Chat AI (dengan referensi user_id)
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY,
+  user_id TEXT,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  type TEXT DEFAULT 'text' CHECK (type IN ('text', 'draft_card')),
+  metadata TEXT,
+  created_at INTEGER NOT NULL
+);
+
 -- Indeks Tambahan untuk Akselerasi Query & Isolasi User
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);
@@ -52,3 +63,6 @@ CREATE INDEX IF NOT EXISTS idx_transactions_wallet ON transactions(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
 CREATE INDEX IF NOT EXISTS idx_budgets_user ON budgets(user_id);
 CREATE INDEX IF NOT EXISTS idx_budgets_month_year ON budgets(month_year);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id);
+

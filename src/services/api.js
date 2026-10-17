@@ -576,4 +576,137 @@ export async function deleteBudgetApi(id) {
   }
 }
 
+/**
+ * Mengirim pesan ke AI Financial Router & Extractor (POST /api/chat)
+ * Mendukung ekstraksi draft kartu transaksi atau konsultasi finansial analitis.
+ * @param {string} message - Pesan input pengguna
+ * @param {Array<{ role: string, content: string }>} [history=[]] - Riwayat percakapan sebelumnya
+ * @returns {Promise<{ id: string, role: string, content: string, type: 'text' | 'draft_card', metadata: Object | null, created_at: number }>}
+ */
+export async function sendChatMessageApi(message, history = []) {
+  const trimmed = String(message || '').trim();
+  if (!trimmed) {
+    throw new Error('Pesan chat tidak boleh kosong.');
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 detik batas waktu LLM router
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({
+        message: trimmed,
+        history: Array.isArray(history) ? history : [],
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal mengirim pesan chat (${res.status} ${res.statusText})`);
+    }
+
+    const result = await res.json();
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Respon AI chat tidak valid.');
+    }
+
+    return result.data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Permintaan AI melebihi batas waktu (timeout). Silakan periksa koneksi internet Anda.');
+    }
+    console.warn('[sendChatMessageApi] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Mengambil 50 riwayat pesan percakapan terakhir pengguna (GET /api/chat)
+ * @returns {Promise<Array<{ id: string, role: string, content: string, type: string, metadata: Object | null, created_at: number }>>}
+ */
+export async function fetchChatHistoryApi() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/chat`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal mengambil riwayat chat (${res.status} ${res.statusText})`);
+    }
+
+    const result = await res.json();
+    if (!result.success || !Array.isArray(result.messages)) {
+      throw new Error(result.error || 'Format data riwayat chat tidak valid.');
+    }
+
+    return result.messages;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Batas waktu memuat riwayat chat terlampaui.');
+    }
+    console.warn('[fetchChatHistoryApi] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Menghapus seluruh riwayat percakapan pengguna di Cloudflare D1 (DELETE /api/chat)
+ * @returns {Promise<Object>}
+ */
+export async function clearChatHistoryApi() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/chat`, {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        ...getAuthHeader(),
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.error || `Gagal menghapus riwayat chat (${res.status} ${res.statusText})`);
+    }
+
+    const result = await res.json();
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Batas waktu menghapus riwayat chat terlampaui.');
+    }
+    console.warn('[clearChatHistoryApi] Error:', error);
+    throw error;
+  }
+}
+
+
 
