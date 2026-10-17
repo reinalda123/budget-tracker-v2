@@ -2405,15 +2405,15 @@ export function openChatAiModal(options = {}) {
       <div id="chat-ai-card" class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl shadow-2xl border border-[#E4E4E7] dark:border-[#27272A] max-w-lg w-full flex flex-col h-[85vh] max-h-[640px] my-auto animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
         
         <!-- Header Modal -->
-        <div class="flex items-center justify-between p-4 sm:p-5 border-b border-[#E4E4E7] dark:border-[#27272A] shrink-0 bg-white/50 dark:bg-[#121214]/50 backdrop-blur-md">
-          <div class="flex items-center gap-3">
+        <div class="relative flex items-center justify-between p-4 sm:p-5 pr-12 sm:pr-14 border-b border-[#E4E4E7] dark:border-[#27272A] shrink-0 bg-white/50 dark:bg-[#121214]/50 backdrop-blur-md">
+          <div class="flex items-center gap-3 min-w-0 pr-1">
             <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
               <i data-lucide="bot" class="w-5 h-5"></i>
             </div>
-            <div>
+            <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <h3 class="text-sm sm:text-base font-bold text-[#09090B] dark:text-[#F4F4F5]">Tanya AI Finansial</h3>
-                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <h3 class="text-sm sm:text-base font-bold text-[#09090B] dark:text-[#F4F4F5] truncate">Tanya AI Finansial</h3>
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                   Online
                 </span>
@@ -2421,8 +2421,13 @@ export function openChatAiModal(options = {}) {
               <p class="text-[11px] text-[#71717A] dark:text-[#A1A1AA] truncate">Asisten cerdas analisis anggaran & evaluasi keuangan</p>
             </div>
           </div>
-          <button id="btn-close-chat-ai" type="button" class="p-2 text-[#71717A] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer">
-            <i data-lucide="x" class="w-5 h-5"></i>
+          <button
+            id="btn-close-chat-ai"
+            type="button"
+            title="Tutup Modal"
+            class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[#71717A] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+          >
+            <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
 
