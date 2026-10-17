@@ -1,7 +1,7 @@
 // src/components/Modals.js
 import { store, getState, setState, transferBalance, addCategory, updateCategoryBudget, updateWalletName, updateWalletBalance, addAccount, deleteTransaction, updateTransaction, triggerImmediateSync } from '../state/store.js';
 import { compressReceiptImage } from '../services/scanner.js';
-import { scanReceiptWithAI, deleteTransactionApi, updateTransactionApi, updateWalletBalanceApi } from '../services/api.js';
+import { scanReceiptWithAI, deleteTransactionApi, updateTransactionApi, updateWalletBalanceApi, createTransactionApi, sendChatMessageApi, fetchChatHistoryApi, clearChatHistoryApi } from '../services/api.js';
 import { login } from '../services/auth.js';
 import { formatRupiah } from '../utils/formatters.js';
 import { formatDateIndo } from '../utils/dates.js';
@@ -2762,7 +2762,20 @@ export function renderDraftTransactionCard(data = {}, options = {}) {
         created_at: new Date().toISOString(),
       };
 
-      // Perbarui saldo akun
+      // 1. Simpan transaksi langsung ke Cloudflare D1 via Worker API
+      await createTransactionApi({
+        id: newTx.id,
+        wallet_id: targetAccount.id,
+        accountId: targetAccount.id,
+        amount: amountNum,
+        type,
+        category: txCategory,
+        note: txNotes,
+        notes: txNotes,
+        date: newTx.date,
+      });
+
+      // 2. Perbarui saldo akun
       const updatedAccounts = accounts.map((a) => {
         if (String(a.id) === String(targetAccount.id)) {
           const currentBal = Number(a.balance) || 0;
@@ -2774,7 +2787,7 @@ export function renderDraftTransactionCard(data = {}, options = {}) {
         return a;
       });
 
-      // Perbarui pemakaian anggaran jika pengeluaran
+      // 3. Perbarui pemakaian anggaran jika pengeluaran
       const updatedCategories = categories.map((c) => {
         if (c.name === txCategory && type === 'expense') {
           return {
@@ -2785,7 +2798,7 @@ export function renderDraftTransactionCard(data = {}, options = {}) {
         return c;
       });
 
-      // Simpan ke state global
+      // 4. Simpan ke state global
       setState({
         transactions: [newTx, ...(state.transactions || [])],
         accounts: updatedAccounts,
@@ -2799,7 +2812,7 @@ export function renderDraftTransactionCard(data = {}, options = {}) {
         options.onSaveDraft(newTx);
       }
 
-      showToast('Transaksi berhasil disimpan ke kas!', 'success');
+      showToast('Transaksi berhasil disimpan ke kas', 'success');
 
       // Transformasi tombol ke status visual "✓ Tersimpan" (disabled)
       isSaved = true;
@@ -3016,7 +3029,10 @@ export function openChatAiModal(options = {}) {
 
         <!-- Chat Stream Container -->
         <div id="chat-ai-messages" class="flex-1 p-4 sm:p-5 overflow-y-auto space-y-3.5 text-xs sm:text-sm">
-          ${getWelcomeMessageHtml()}
+          <div id="chat-history-loading" class="flex items-center justify-center py-12 gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+            <div class="w-4 h-4 border-2 border-zinc-400 dark:border-zinc-500 border-t-transparent rounded-full animate-spin"></div>
+            <span>Memuat riwayat percakapan...</span>
+          </div>
         </div>
 
         <!-- Quick Suggestion Chips -->
@@ -3192,21 +3208,157 @@ export function openChatAiModal(options = {}) {
   };
 
   let activeDraftCard = null;
+  let chatHistory = [];
+  const sendBtn = root.querySelector('#btn-chat-ai-send');
 
-  const handleSendMessage = (text) => {
+  const appendUserBubble = (content) => {
+    const userBubble = document.createElement('div');
+    userBubble.className = 'flex items-start justify-end gap-2.5 animate-in fade-in duration-100';
+    const bubbleCard = document.createElement('div');
+    bubbleCard.className = 'bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] px-3.5 py-2.5 rounded-2xl rounded-tr-xs max-w-[85%] text-xs sm:text-sm font-medium leading-relaxed';
+    const p = document.createElement('p');
+    p.textContent = content;
+    bubbleCard.appendChild(p);
+    userBubble.appendChild(bubbleCard);
+    messagesContainer.appendChild(userBubble);
+    scrollToBottom();
+    return userBubble;
+  };
+
+  const appendAssistantBubble = (content, draftData = null) => {
+    const aiBubble = document.createElement('div');
+    aiBubble.className = 'flex items-start gap-2.5 animate-in fade-in duration-150';
+
+    const aiBubbleInner = document.createElement('div');
+    aiBubbleInner.className = 'bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[90%] sm:max-w-[88%] space-y-2 border border-zinc-200/60 dark:border-zinc-700/60 flex flex-col';
+
+    if (content) {
+      const p = document.createElement('div');
+      p.className = 'leading-relaxed space-y-1.5 text-xs sm:text-sm';
+      if (!content.includes('<p>') && !content.includes('<div>') && !content.includes('<ul>')) {
+        p.innerHTML = `<p>${content.replace(/\n/g, '<br/>')}</p>`;
+      } else {
+        p.innerHTML = content;
+      }
+      aiBubbleInner.appendChild(p);
+    }
+
+    if (draftData) {
+      const draftCard = renderDraftTransactionCard(draftData, {
+        onSaveDraft: () => {
+          if (activeDraftCard === draftCard) {
+            activeDraftCard = null;
+          }
+        },
+      });
+      activeDraftCard = draftCard;
+      aiBubbleInner.appendChild(draftCard);
+
+      const currentAccounts = getState().accounts || [];
+      if (draftData.needs_account_clarification && currentAccounts.length > 0) {
+        const clarificationMsg = document.createElement('p');
+        clarificationMsg.className = 'text-xs text-zinc-500 dark:text-zinc-400 mt-1';
+        clarificationMsg.textContent = draftData.type === 'income'
+          ? 'Masuk ke rekening mana nih? Klik salah satu di bawah jika ingin mengubah:'
+          : 'Bayar pakai apa nih? Klik salah satu di bawah jika ingin mengubah:';
+        aiBubbleInner.appendChild(clarificationMsg);
+
+        const chipsEl = renderAccountQuickSelectChips({
+          accounts: currentAccounts,
+          label: 'Pilihan rekening aktif:',
+          onSelect: (selectedAcc) => {
+            draftCard.updateAccount(selectedAcc.name, selectedAcc.id);
+            if (chatInput) {
+              chatInput.value = selectedAcc.name;
+            }
+            showToast(`Rekening diatur ke ${selectedAcc.name}`, 'info');
+          },
+        });
+        aiBubbleInner.appendChild(chipsEl);
+      }
+    }
+
+    aiBubble.innerHTML = `
+      <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
+        <i data-lucide="bot" class="w-4 h-4"></i>
+      </div>
+    `;
+    aiBubble.appendChild(aiBubbleInner);
+    messagesContainer.appendChild(aiBubble);
+    renderIcons(aiBubble);
+    scrollToBottom();
+    return aiBubble;
+  };
+
+  const showTypingIndicator = () => {
+    removeTypingIndicator();
+    const typingBubble = document.createElement('div');
+    typingBubble.id = 'chat-ai-typing-indicator';
+    typingBubble.className = 'flex items-start gap-2.5 animate-in fade-in duration-150';
+    typingBubble.innerHTML = `
+      <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
+        <i data-lucide="bot" class="w-4 h-4"></i>
+      </div>
+      <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] px-3.5 py-3 rounded-2xl rounded-tl-xs border border-zinc-200/60 dark:border-zinc-700/60 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce"></span>
+        <span class="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:0.2s]"></span>
+        <span class="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-bounce [animation-delay:0.4s]"></span>
+      </div>
+    `;
+    messagesContainer.appendChild(typingBubble);
+    renderIcons(typingBubble);
+    scrollToBottom();
+  };
+
+  const removeTypingIndicator = () => {
+    const indicator = messagesContainer?.querySelector('#chat-ai-typing-indicator');
+    if (indicator) {
+      indicator.remove();
+    }
+  };
+
+  const loadChatHistory = async () => {
+    try {
+      const messages = await fetchChatHistoryApi();
+      if (messagesContainer) {
+        messagesContainer.innerHTML = '';
+      }
+
+      if (Array.isArray(messages) && messages.length > 0) {
+        chatHistory = messages.map((m) => ({ role: m.role, content: m.content }));
+        for (const msg of messages) {
+          if (msg.role === 'user') {
+            appendUserBubble(msg.content);
+          } else if (msg.role === 'assistant') {
+            const draftData = msg.metadata?.draft || (msg.type === 'draft_card' ? msg.metadata : null);
+            appendAssistantBubble(msg.content, draftData);
+          }
+        }
+      } else {
+        chatHistory = [];
+        if (messagesContainer) {
+          messagesContainer.innerHTML = getWelcomeMessageHtml();
+          renderIcons(messagesContainer);
+        }
+      }
+    } catch (err) {
+      console.warn('[openChatAiModal] Gagal memuat riwayat percakapan dari Cloudflare D1:', err);
+      chatHistory = [];
+      if (messagesContainer) {
+        messagesContainer.innerHTML = getWelcomeMessageHtml();
+        renderIcons(messagesContainer);
+      }
+    } finally {
+      scrollToBottom();
+    }
+  };
+
+  const handleSendMessage = async (text) => {
     const trimmed = (text || '').trim();
     if (!trimmed || !messagesContainer) return;
 
-    // Render pesan user
-    const userBubble = document.createElement('div');
-    userBubble.className = 'flex items-start justify-end gap-2.5 animate-in fade-in duration-100';
-    userBubble.innerHTML = `
-      <div class="bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] px-3.5 py-2.5 rounded-2xl rounded-tr-xs max-w-[85%] text-xs sm:text-sm font-medium leading-relaxed">
-        <p>${trimmed}</p>
-      </div>
-    `;
-    messagesContainer.appendChild(userBubble);
-    scrollToBottom();
+    // Render pesan user secara optimistik
+    appendUserBubble(trimmed);
 
     // 1. Periksa apakah user mengklarifikasi rekening untuk draft aktif yang belum disimpan
     const currentAccounts = getState().accounts || [];
@@ -3217,101 +3369,60 @@ export function openChatAiModal(options = {}) {
     );
 
     if (activeDraftCard && !activeDraftCard.isSaved() && matchingAcc && !trimmed.match(/\d/)) {
-      setTimeout(() => {
-        activeDraftCard.updateAccount(matchingAcc.name, matchingAcc.id);
-        const aiBubble = document.createElement('div');
-        aiBubble.className = 'flex items-start gap-2.5 animate-in fade-in duration-150';
-        aiBubble.innerHTML = `
-          <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
-            <i data-lucide="bot" class="w-4 h-4"></i>
-          </div>
-          <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[88%] space-y-1.5 border border-zinc-200/60 dark:border-zinc-700/60">
-            <p>Rekening draft telah disesuaikan ke <strong>${matchingAcc.name}</strong>. Silakan klik tombol <strong>Simpan ke Kas</strong> pada kartu di atas untuk menyimpan. 👍</p>
-          </div>
-        `;
-        messagesContainer.appendChild(aiBubble);
-        renderIcons(aiBubble);
-        scrollToBottom();
-      }, 120);
+      activeDraftCard.updateAccount(matchingAcc.name, matchingAcc.id);
+      chatHistory.push({ role: 'user', content: trimmed });
+      const confirmationText = `Rekening draf telah disesuaikan ke <strong>${matchingAcc.name}</strong>. Silakan klik tombol <strong>Simpan ke Kas</strong> pada kartu di atas untuk menyimpan. 👍`;
+      chatHistory.push({ role: 'assistant', content: `Rekening draf telah disesuaikan ke ${matchingAcc.name}.` });
+      appendAssistantBubble(confirmationText);
       return;
     }
 
-    // 2. Periksa apakah pesan merupakan intensi pencatatan transaksi (Draft Card)
-    const transactionIntent = parseTransactionIntent(trimmed, currentAccounts, getState().categories || []);
-    if (transactionIntent) {
-      setTimeout(() => {
-        const typeLabel = transactionIntent.type === 'income' ? 'pemasukan' : 'pengeluaran';
-        const aiBubble = document.createElement('div');
-        aiBubble.className = 'flex items-start gap-2.5 animate-in fade-in duration-150';
-
-        const aiBubbleInner = document.createElement('div');
-        aiBubbleInner.className = 'bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[90%] sm:max-w-[88%] space-y-2 border border-zinc-200/60 dark:border-zinc-700/60 flex flex-col';
-
-        const introText = document.createElement('p');
-        introText.innerHTML = `Saya sudah menyiapkan draft pencatatan <strong>${typeLabel}</strong> untuk Anda:`;
-        aiBubbleInner.appendChild(introText);
-
-        const draftCard = renderDraftTransactionCard(transactionIntent, {
-          onSaveDraft: () => {
-            activeDraftCard = null;
-          },
-        });
-        activeDraftCard = draftCard;
-        aiBubbleInner.appendChild(draftCard);
-
-        // Jika klarifikasi rekening dibutuhkan & terdapat rekening aktif
-        if (transactionIntent.accountClarificationNeeded && currentAccounts.length > 0) {
-          const clarificationMsg = document.createElement('p');
-          clarificationMsg.className = 'text-xs text-zinc-500 dark:text-zinc-400 mt-1';
-          clarificationMsg.textContent = transactionIntent.type === 'income'
-            ? 'Masuk ke rekening mana nih? Klik salah satu di bawah jika ingin mengubah:'
-            : 'Bayar pakai apa nih? Klik salah satu di bawah jika ingin mengubah:';
-          aiBubbleInner.appendChild(clarificationMsg);
-
-          const chipsEl = renderAccountQuickSelectChips({
-            accounts: currentAccounts,
-            label: 'Pilihan rekening aktif:',
-            onSelect: (selectedAcc) => {
-              draftCard.updateAccount(selectedAcc.name, selectedAcc.id);
-              if (chatInput) {
-                chatInput.value = selectedAcc.name;
-              }
-              showToast(`Rekening diatur ke ${selectedAcc.name}`, 'info');
-            },
-          });
-          aiBubbleInner.appendChild(chipsEl);
-        }
-
-        aiBubble.innerHTML = `
-          <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
-            <i data-lucide="bot" class="w-4 h-4"></i>
-          </div>
-        `;
-        aiBubble.appendChild(aiBubbleInner);
-        messagesContainer.appendChild(aiBubble);
-        renderIcons(aiBubble);
-        scrollToBottom();
-      }, 120);
-      return;
+    // 2. Disable input & button kirim, tampilkan animasi typing bot
+    if (chatInput) {
+      chatInput.disabled = true;
     }
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    showTypingIndicator();
 
-    // 3. Render respon AI umum (simulasi cepat real-time)
-    setTimeout(() => {
-      const aiReplyContent = generateAiReply(trimmed);
-      const aiBubble = document.createElement('div');
-      aiBubble.className = 'flex items-start gap-2.5 animate-in fade-in duration-150';
-      aiBubble.innerHTML = `
-        <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
-          <i data-lucide="bot" class="w-4 h-4"></i>
-        </div>
-        <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[88%] space-y-1.5 border border-zinc-200/60 dark:border-zinc-700/60">
-          ${aiReplyContent}
-        </div>
-      `;
-      messagesContainer.appendChild(aiBubble);
-      renderIcons(aiBubble);
+    try {
+      const response = await sendChatMessageApi(trimmed, chatHistory);
+      removeTypingIndicator();
+
+      if (response) {
+        chatHistory.push({ role: 'user', content: trimmed });
+        chatHistory.push({ role: 'assistant', content: response.content || '' });
+
+        const draftData = response.type === 'draft_card' && response.metadata?.draft ? response.metadata.draft : null;
+        appendAssistantBubble(response.content, draftData);
+      }
+    } catch (err) {
+      removeTypingIndicator();
+      console.warn('[handleSendMessage] Gagal menghubungi endpoint AI /api/chat:', err);
+
+      // Fallback respons lokal jika Worker offline / terjadi timeout
+      const localIntent = parseTransactionIntent(trimmed, currentAccounts, getState().categories || []);
+      if (localIntent) {
+        const typeLabel = localIntent.type === 'income' ? 'pemasukan' : 'pengeluaran';
+        appendAssistantBubble(`Saya sudah menyiapkan draf pencatatan <strong>${typeLabel}</strong> untuk Anda:`, localIntent);
+      } else {
+        const localReply = generateAiReply(trimmed);
+        appendAssistantBubble(localReply);
+      }
+      showToast('Koneksi AI online terganggu, beralih ke asisten lokal.', 'warning');
+    } finally {
+      if (chatInput) {
+        chatInput.disabled = false;
+        chatInput.focus();
+      }
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
       scrollToBottom();
-    }, 120);
+    }
   };
 
   // Event kirim form
@@ -3333,7 +3444,7 @@ export function openChatAiModal(options = {}) {
     });
   });
 
-  // Event bersihkan obrolan (Custom In-App Confirm Dialog)
+  // Event bersihkan obrolan (Custom In-App Confirm Dialog dengan koneksi D1)
   const clearChatBtn = root.querySelector('#btn-clear-chat-ai');
   clearChatBtn?.addEventListener('click', () => {
     if (root.querySelector('#clear-chat-confirm-backdrop')) return;
@@ -3347,7 +3458,7 @@ export function openChatAiModal(options = {}) {
           <i data-lucide="trash-2" class="w-5 h-5"></i>
         </div>
         <h4 class="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">Bersihkan Percakapan?</h4>
-        <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-5">Semua riwayat obrolan di layar akan dikosongkan kembali ke awal.</p>
+        <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-5">Semua riwayat obrolan di layar dan database Cloudflare D1 akan dikosongkan.</p>
         <div class="flex items-center gap-2.5 w-full">
           <button
             type="button"
@@ -3384,22 +3495,37 @@ export function openChatAiModal(options = {}) {
       }
     });
 
-    // Klik Hapus (Clear Chat)
-    confirmOverlay.querySelector('#btn-confirm-execute-clear')?.addEventListener('click', () => {
-      closeConfirmDialog();
-      activeDraftCard = null;
-      if (messagesContainer) {
-        messagesContainer.innerHTML = `
-          <div class="py-1 text-center animate-in fade-in duration-150">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-[#71717A] dark:text-[#A1A1AA] border border-zinc-200/60 dark:border-zinc-700/60">
-              <i data-lucide="trash-2" class="w-3 h-3 text-rose-500"></i>
-              Riwayat percakapan dibersihkan
-            </span>
-          </div>
-          ${getWelcomeMessageHtml()}
-        `;
-        renderIcons(messagesContainer);
-        scrollToBottom();
+    // Klik Hapus (Clear Chat di Cloudflare D1 & UI)
+    confirmOverlay.querySelector('#btn-confirm-execute-clear')?.addEventListener('click', async () => {
+      const btnExec = confirmOverlay.querySelector('#btn-confirm-execute-clear');
+      if (btnExec) {
+        btnExec.disabled = true;
+        btnExec.textContent = 'Menghapus...';
+      }
+
+      try {
+        await clearChatHistoryApi();
+        closeConfirmDialog();
+        activeDraftCard = null;
+        chatHistory = [];
+        if (messagesContainer) {
+          messagesContainer.innerHTML = `
+            <div class="py-1 text-center animate-in fade-in duration-150">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-[#71717A] dark:text-[#A1A1AA] border border-zinc-200/60 dark:border-zinc-700/60">
+                <i data-lucide="trash-2" class="w-3 h-3 text-rose-500"></i>
+                Riwayat percakapan dibersihkan
+              </span>
+            </div>
+            ${getWelcomeMessageHtml()}
+          `;
+          renderIcons(messagesContainer);
+          scrollToBottom();
+        }
+        showToast('Riwayat percakapan berhasil dibersihkan', 'success');
+      } catch (err) {
+        closeConfirmDialog();
+        console.error('[openChatAiModal] Gagal menghapus riwayat chat:', err);
+        showToast('Gagal menghapus riwayat chat: ' + (err.message || err), 'error');
       }
     });
   });
@@ -3428,4 +3554,7 @@ export function openChatAiModal(options = {}) {
       handleClose();
     }
   });
+
+  // Inisialisasi: Muat riwayat percakapan dari D1
+  loadChatHistory();
 }
