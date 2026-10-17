@@ -2365,6 +2365,331 @@ export function openConfirmDeleteCategoryModal(options = {}) {
   });
 }
 
+/**
+ * Menampilkan Modal / Drawer Tanya AI Finansial
+ * Asisten AI cerdas untuk konsultasi anggaran, evaluasi pengeluaran, dan burn rate.
+ * @param {Object} [options]
+ */
+export function openChatAiModal(options = {}) {
+  const root = modalRoot();
+  if (!root) return;
 
+  const state = getState();
+  const transactions = state.transactions || [];
+  const categories = state.categories || [];
+  const accounts = state.accounts || [];
 
+  // Hitung ringkasan keuangan terkini dari state D1
+  const totalBalance = accounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentMonthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+  
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const currentDay = now.getDate();
+  const remainingDays = Math.max(1, daysInMonth - currentDay);
 
+  const thisMonthExpenses = transactions
+    .filter((t) => t.type === 'expense' && (t.date || '').startsWith(currentMonthStr))
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+  const thisMonthIncome = transactions
+    .filter((t) => t.type === 'income' && (t.date || '').startsWith(currentMonthStr))
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+  const dailyBurnRate = currentDay > 0 ? Math.round(thisMonthExpenses / currentDay) : 0;
+
+  root.innerHTML = `
+    <div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+      <div id="chat-ai-card" class="bg-[#FFFFFF] dark:bg-[#121214] rounded-2xl shadow-2xl border border-[#E4E4E7] dark:border-[#27272A] max-w-lg w-full flex flex-col h-[85vh] max-h-[640px] my-auto animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+        
+        <!-- Header Modal -->
+        <div class="flex items-center justify-between p-4 sm:p-5 border-b border-[#E4E4E7] dark:border-[#27272A] shrink-0 bg-white/50 dark:bg-[#121214]/50 backdrop-blur-md">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+              <i data-lucide="bot" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm sm:text-base font-bold text-[#09090B] dark:text-[#F4F4F5]">Tanya AI Finansial</h3>
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                  Online
+                </span>
+              </div>
+              <p class="text-[11px] text-[#71717A] dark:text-[#A1A1AA] truncate">Asisten cerdas analisis anggaran & evaluasi keuangan</p>
+            </div>
+          </div>
+          <button id="btn-close-chat-ai" type="button" class="p-2 text-[#71717A] hover:text-[#09090B] dark:hover:text-[#F4F4F5] hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Chat Stream Container -->
+        <div id="chat-ai-messages" class="flex-1 p-4 sm:p-5 overflow-y-auto space-y-3.5 text-xs sm:text-sm">
+          
+          <!-- Welcome Message from AI -->
+          <div class="flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+              <i data-lucide="bot" class="w-4 h-4"></i>
+            </div>
+            <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[88%] space-y-2 border border-zinc-200/60 dark:border-zinc-700/60">
+              <p>Halo! Saya <strong>Asisten AI Finansial</strong> Anda. 🤖</p>
+              <p class="text-[#71717A] dark:text-[#A1A1AA] leading-relaxed">
+                Saya terhubung langsung ke data mutasi Cloudflare D1 Anda. Silakan tanyakan ringkasan keuangan, analisis pos pengeluaran, atau evaluasi burn rate!
+              </p>
+              <div class="pt-2 border-t border-zinc-200 dark:border-zinc-700/60 flex flex-wrap items-center justify-between gap-1 text-[11px] text-[#71717A] dark:text-[#A1A1AA]">
+                <span>Total Saldo: <strong class="text-[#09090B] dark:text-[#F4F4F5]">${formatRupiah(totalBalance)}</strong></span>
+                <span>Pengeluaran: <strong class="text-rose-600 dark:text-rose-400">${formatRupiah(thisMonthExpenses)}</strong></span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Quick Suggestion Chips -->
+        <div class="px-3 sm:px-4 py-2 border-t border-[#E4E4E7]/60 dark:border-[#27272A]/60 bg-zinc-50/50 dark:bg-zinc-900/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+          <button type="button" class="chat-suggestion-chip shrink-0 px-2.5 py-1.5 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer select-none" data-prompt="Bagaimana ringkasan keuangan saya bulan ini?">
+            💡 Ringkasan bulan ini
+          </button>
+          <button type="button" class="chat-suggestion-chip shrink-0 px-2.5 py-1.5 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer select-none" data-prompt="Apa saja kategori pengeluaran terbesar saya?">
+            📊 Pengeluaran terbesar
+          </button>
+          <button type="button" class="chat-suggestion-chip shrink-0 px-2.5 py-1.5 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer select-none" data-prompt="Berapa daily burn rate saya dan tips penghematannya?">
+            🔥 Daily Burn Rate
+          </button>
+          <button type="button" class="chat-suggestion-chip shrink-0 px-2.5 py-1.5 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer select-none" data-prompt="Bagaimana status alokasi pos anggaran saya?">
+            🎯 Evaluasi pos anggaran
+          </button>
+        </div>
+
+        <!-- Chat Input Form -->
+        <div class="p-3 sm:p-4 border-t border-[#E4E4E7] dark:border-[#27272A] bg-white dark:bg-[#121214] shrink-0">
+          <form id="chat-ai-form" class="flex items-center gap-2">
+            <input
+              type="text"
+              id="chat-ai-input"
+              placeholder="Tanyakan analisis keuangan atau saran pos anggaran..."
+              autocomplete="off"
+              class="flex-1 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm bg-zinc-100 dark:bg-zinc-800/80 border border-[#E4E4E7] dark:border-[#27272A] text-[#09090B] dark:text-[#F4F4F5] placeholder-[#71717A] dark:placeholder-[#A1A1AA] focus:outline-hidden focus:ring-2 focus:ring-[#09090B] dark:focus:ring-white transition-all"
+            />
+            <button
+              type="submit"
+              id="btn-chat-ai-send"
+              title="Kirim Pertanyaan"
+              class="px-3.5 py-2.5 rounded-xl bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center shrink-0 active:opacity-85 shadow-2xs"
+            >
+              <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  renderIcons(root);
+
+  const messagesContainer = root.querySelector('#chat-ai-messages');
+  const chatForm = root.querySelector('#chat-ai-form');
+  const chatInput = root.querySelector('#chat-ai-input');
+  const closeBtn = root.querySelector('#btn-close-chat-ai');
+  const backdrop = root.querySelector('#modal-backdrop');
+
+  const scrollToBottom = () => {
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  };
+
+  const generateAiReply = (question) => {
+    const q = question.toLowerCase();
+
+    // 1. Ringkasan Keuangan
+    if (q.includes('ringkasan') || q.includes('bulan ini') || q.includes('keuangan')) {
+      const netMonth = thisMonthIncome - thisMonthExpenses;
+      const netText = netMonth >= 0
+        ? `Surplus bersih bulan ini adalah <strong>+${formatRupiah(netMonth)}</strong>.`
+        : `Defisit bulan ini sebesar <strong class="text-rose-500">-${formatRupiah(Math.abs(netMonth))}</strong>.`;
+
+      return `
+        <p>📊 <strong>Ringkasan Finansial Bulan Ini (${currentMonthStr}):</strong></p>
+        <ul class="list-disc list-inside space-y-1 text-[#71717A] dark:text-[#A1A1AA] mt-1.5">
+          <li>Total Pemasukan: <span class="text-emerald-600 dark:text-emerald-400 font-semibold">${formatRupiah(thisMonthIncome)}</span></li>
+          <li>Total Pengeluaran: <span class="text-rose-600 dark:text-rose-400 font-semibold">${formatRupiah(thisMonthExpenses)}</span></li>
+          <li>Total Saldo Bersih Seluruh Rekening: <span class="font-semibold text-[#09090B] dark:text-[#F4F4F5]">${formatRupiah(totalBalance)}</span></li>
+        </ul>
+        <p class="mt-2 text-[#71717A] dark:text-[#A1A1AA]">${netText}</p>
+      `;
+    }
+
+    // 2. Kategori Pengeluaran Terbesar
+    if (q.includes('terbesar') || q.includes('kategori') || q.includes('pos')) {
+      const catMap = {};
+      transactions
+        .filter((t) => t.type === 'expense' && (t.date || '').startsWith(currentMonthStr))
+        .forEach((t) => {
+          const c = t.category || 'Lainnya';
+          catMap[c] = (catMap[c] || 0) + (Number(t.amount) || 0);
+        });
+
+      const sortedCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+      if (sortedCats.length === 0) {
+        return `<p>Belum ada transaksi pengeluaran yang tercatat pada bulan ini (${currentMonthStr}). Pengeluaran Anda masih Rp 0!</p>`;
+      }
+
+      const listHtml = sortedCats.slice(0, 4).map(([cat, amt], i) => {
+        const pct = thisMonthExpenses > 0 ? Math.round((amt / thisMonthExpenses) * 100) : 0;
+        return `<li><strong>#${i + 1} ${cat}</strong>: ${formatRupiah(amt)} (${pct}%)</li>`;
+      }).join('');
+
+      return `
+        <p>📈 <strong>Top Pos Pengeluaran Bulan Ini:</strong></p>
+        <ul class="list-disc list-inside space-y-1 text-[#71717A] dark:text-[#A1A1AA] mt-1.5">
+          ${listHtml}
+        </ul>
+        <p class="mt-2 text-[#71717A] dark:text-[#A1A1AA]">Pengeluaran terbesar ada di kategori <strong>${sortedCats[0][0]}</strong>. Mengontrol pos ini akan memberikan dampak penghematan terbesar.</p>
+      `;
+    }
+
+    // 3. Daily Burn Rate
+    if (q.includes('burn rate') || q.includes('daily') || q.includes('tips') || q.includes('hemat')) {
+      const projectedMonth = dailyBurnRate * daysInMonth;
+      const safeDailyBudget = remainingDays > 0 && totalBalance > 0
+        ? Math.round((totalBalance * 0.3) / remainingDays)
+        : 0;
+
+      return `
+        <p>🔥 <strong>Analisis Daily Burn Rate:</strong></p>
+        <ul class="list-disc list-inside space-y-1 text-[#71717A] dark:text-[#A1A1AA] mt-1.5">
+          <li>Rata-rata Pengeluaran Harian: <strong>${formatRupiah(dailyBurnRate)}/hari</strong></li>
+          <li>Sisa Hari Bulan Ini: <strong>${remainingDays} hari</strong></li>
+          <li>Estimasi Pengeluaran Akhir Bulan: <strong>${formatRupiah(projectedMonth)}</strong></li>
+        </ul>
+        <p class="mt-2 text-[#71717A] dark:text-[#A1A1AA]">💡 <em>Rekomendasi Cerdas:</em> Pertahankan pengeluaran harian di bawah <strong>${formatRupiah(Math.max(50000, safeDailyBudget))}</strong> agar rasio tabungan Anda tetap terjaga sehat.</p>
+      `;
+    }
+
+    // 4. Evaluasi Pos Anggaran
+    if (q.includes('anggaran') || q.includes('plafon') || q.includes('evaluasi')) {
+      if (!categories || categories.length === 0) {
+        return `<p>Anda belum memiliki pos anggaran yang dialokasikan. Tambahkan pos anggaran di tab Beranda untuk mulai melacak batas pengeluaran per kategori.</p>`;
+      }
+
+      const overBudget = [];
+      const healthyBudget = [];
+
+      categories.forEach((cat) => {
+        const spent = transactions
+          .filter((t) => t.type === 'expense' && t.category === cat.name && (t.date || '').startsWith(currentMonthStr))
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        const limit = Number(cat.monthlyBudget) || 0;
+        if (limit > 0) {
+          const ratio = (spent / limit) * 100;
+          if (ratio >= 90) {
+            overBudget.push(`${cat.name} (${Math.round(ratio)}% - ${formatRupiah(spent)} / ${formatRupiah(limit)})`);
+          } else {
+            healthyBudget.push(`${cat.name} (${Math.round(ratio)}%)`);
+          }
+        }
+      });
+
+      if (overBudget.length > 0) {
+        return `
+          <p>⚠️ <strong>Peringatan Plafon Anggaran:</strong></p>
+          <p class="text-rose-600 dark:text-rose-400 mt-1">Kategori berikut mendekati atau melebihi kuota:</p>
+          <ul class="list-disc list-inside space-y-1 text-[#71717A] dark:text-[#A1A1AA] mt-1">
+            ${overBudget.map(c => `<li>${c}</li>`).join('')}
+          </ul>
+        `;
+      }
+
+      return `
+        <p>✅ <strong>Kondisi Anggaran Aman!</strong></p>
+        <p class="text-[#71717A] dark:text-[#A1A1AA] mt-1">Seluruh pos anggaran kategori Anda saat ini berada dalam batas aman di bawah kuota bulanan.</p>
+      `;
+    }
+
+    // Default Jawaban Bantuan Umum
+    return `
+      <p>Terima kasih atas pertanyaannya! 💡</p>
+      <p class="text-[#71717A] dark:text-[#A1A1AA] leading-relaxed mt-1">
+        Berdasarkan data rekening aktif Anda dengan total saldo <strong>${formatRupiah(totalBalance)}</strong> dan pengeluaran <strong>${formatRupiah(thisMonthExpenses)}</strong>, portofolio kas Anda stabil. Anda dapat memilih salah satu chip rekomendasi di atas untuk evaluasi mendalam.
+      </p>
+    `;
+  };
+
+  const handleSendMessage = (text) => {
+    const trimmed = (text || '').trim();
+    if (!trimmed || !messagesContainer) return;
+
+    // Render pesan user
+    const userBubble = document.createElement('div');
+    userBubble.className = 'flex items-start justify-end gap-2.5 animate-in fade-in duration-100';
+    userBubble.innerHTML = `
+      <div class="bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] px-3.5 py-2.5 rounded-2xl rounded-tr-xs max-w-[85%] text-xs sm:text-sm font-medium leading-relaxed">
+        <p>${trimmed}</p>
+      </div>
+    `;
+    messagesContainer.appendChild(userBubble);
+    scrollToBottom();
+
+    // Render respon AI (simulasi cepat real-time)
+    setTimeout(() => {
+      const aiReplyContent = generateAiReply(trimmed);
+      const aiBubble = document.createElement('div');
+      aiBubble.className = 'flex items-start gap-2.5 animate-in fade-in duration-150';
+      aiBubble.innerHTML = `
+        <div class="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+          <i data-lucide="bot" class="w-4 h-4"></i>
+        </div>
+        <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[88%] space-y-1.5 border border-zinc-200/60 dark:border-zinc-700/60">
+          ${aiReplyContent}
+        </div>
+      `;
+      messagesContainer.appendChild(aiBubble);
+      renderIcons(aiBubble);
+      scrollToBottom();
+    }, 120);
+  };
+
+  // Event kirim form
+  chatForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!chatInput) return;
+    const text = chatInput.value;
+    chatInput.value = '';
+    handleSendMessage(text);
+  });
+
+  // Event chip saran
+  root.querySelectorAll('.chat-suggestion-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const prompt = chip.getAttribute('data-prompt');
+      if (prompt) {
+        handleSendMessage(prompt);
+      }
+    });
+  });
+
+  // Close handlers
+  const handleClose = () => {
+    window.removeEventListener('keydown', handleEsc);
+    closeModal();
+  };
+
+  const handleEsc = (e) => {
+    if (e.key === 'Escape') {
+      handleClose();
+    }
+  };
+  window.addEventListener('keydown', handleEsc);
+
+  closeBtn?.addEventListener('click', handleClose);
+  backdrop?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-backdrop') {
+      handleClose();
+    }
+  });
+}

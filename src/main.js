@@ -13,6 +13,7 @@ import { createBottomNav } from './components/BottomNav.js';
 import {
   openTransactionModal,
   openScanReceiptModal,
+  openChatAiModal,
   openLoginModal,
   openTransferModal,
   openEditBudgetModal,
@@ -39,6 +40,20 @@ let idleManagerInstance = null;
 let navbarInstance = null;
 let bottomNavInstance = null;
 let storeUnsubscribe = null;
+
+/**
+ * Handler pemicu dialog / modal Tanya AI Finansial
+ */
+export function handleOpenChatAI() {
+  openChatAiModal();
+}
+
+/**
+ * Handler pemicu formulir pencatatan transaksi manual
+ */
+export function handleOpenManualForm() {
+  openTransactionModal();
+}
 
 /**
  * Overlay Layar Kunci Monokromatik Sleek (Bebas AI Slop)
@@ -124,16 +139,28 @@ function renderHomeKpi(container) {
               Total Saldo Bersih
             </span>
 
-            <!-- Tombol Aksi Cepat Scan AI Bergaya Glassmorphism (Tersedia di SEMUA Ukuran Layar: Mobile & PC) -->
-            <button
-              id="btn-kpi-scan-ai"
-              type="button"
-              title="Pindai Struk Belanja dengan AI"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/5 dark:bg-white/10 hover:bg-zinc-900/10 dark:hover:bg-white/15 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-900/10 dark:border-white/15 backdrop-blur-md text-xs font-semibold cursor-pointer transition-colors shadow-2xs active:opacity-80"
-            >
-              <i data-lucide="camera" class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400"></i>
-              <span>Scan AI</span>
-            </button>
+            <!-- Grup Tombol Aksi AI (Desktop Only >= md, disembunyikan di Mobile < md) -->
+            <div class="hidden md:flex items-center gap-2">
+              <button
+                id="btn-kpi-scan-ai"
+                type="button"
+                title="Pindai Struk Belanja dengan AI"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/5 dark:bg-white/10 hover:bg-zinc-900/10 dark:hover:bg-white/15 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-900/10 dark:border-white/15 backdrop-blur-md text-xs font-semibold cursor-pointer transition-colors shadow-2xs active:opacity-80"
+              >
+                <i data-lucide="camera" class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400"></i>
+                <span>Scan AI</span>
+              </button>
+
+              <button
+                id="btn-kpi-ask-ai"
+                type="button"
+                title="Tanya AI Asisten Finansial"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/5 dark:bg-white/10 hover:bg-zinc-900/10 dark:hover:bg-white/15 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-900/10 dark:border-white/15 backdrop-blur-md text-xs font-semibold cursor-pointer transition-colors shadow-2xs active:opacity-80"
+              >
+                <i data-lucide="bot" class="w-3.5 h-3.5 text-sky-500 dark:text-sky-400"></i>
+                <span>Tanya AI</span>
+              </button>
+            </div>
           </div>
 
           <h2 class="text-3xl sm:text-4xl font-extrabold text-[#09090B] dark:text-[#F4F4F5] tracking-tight">
@@ -165,9 +192,12 @@ function renderHomeKpi(container) {
 
   renderIcons(container);
 
-  // Pasang event listener untuk tombol aksi cepat Scan AI
+  // Pasang event listener untuk tombol aksi cepat AI
   container.querySelector('#btn-kpi-scan-ai')?.addEventListener('click', () => {
     openScanReceiptModal();
+  });
+  container.querySelector('#btn-kpi-ask-ai')?.addEventListener('click', () => {
+    handleOpenChatAI();
   });
 }
 
@@ -598,7 +628,13 @@ function mountAuthenticatedDashboard() {
     bottomNavInstance = createBottomNav({
       container: bottomNavRoot,
       onQuickAdd: () => {
-        openTransactionModal();
+        handleOpenManualForm();
+      },
+      onScanReceipt: () => {
+        openScanReceiptModal();
+      },
+      onAskAi: () => {
+        handleOpenChatAI();
       },
     });
   }

@@ -61,6 +61,8 @@ import {
   Smartphone,
   Compass,
   UserPlus,
+  Bot,
+  Send,
 } from 'lucide';
 
 /**
@@ -127,6 +129,8 @@ const registeredIcons = {
   Smartphone,
   Compass,
   UserPlus,
+  Bot,
+  Send,
 };
 
 /**

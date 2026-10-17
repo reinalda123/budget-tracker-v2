@@ -12,7 +12,9 @@ export class BottomNav {
   /**
    * @param {Object} options
    * @param {HTMLElement} options.container - Elemen DOM tempat BottomNav dirender.
-   * @param {() => void} [options.onQuickAdd] - Callback saat tombol tengah (+) ditekan.
+   * @param {() => void} [options.onQuickAdd] - Callback saat tombol tengah (+) ditekan (Catat Manual).
+   * @param {() => void} [options.onScanReceipt] - Callback saat aksi Scan Struk dipilih.
+   * @param {() => void} [options.onAskAi] - Callback saat aksi Tanya AI dipilih.
    */
   constructor(options) {
     if (!options || !options.container) {
@@ -21,7 +23,10 @@ export class BottomNav {
 
     this.container = options.container;
     this.onQuickAdd = options.onQuickAdd || (() => {});
+    this.onScanReceipt = options.onScanReceipt || (() => {});
+    this.onAskAi = options.onAskAi || (() => {});
     this.currentActiveTab = getState().activeTab || 'home';
+    this.isPopoverOpen = false;
 
     // Render DOM persistent shell sekali agar animasi kapsul liquid glass meluncur mulus
     this.render();
@@ -34,11 +39,71 @@ export class BottomNav {
       }
     });
 
-    // Listener resize jendela agar posisi kapsul tetap presisi
+    // Listener resize jendela agar posisi kapsul tetap presisi & tutup popover di desktop
     this.handleResize = () => {
       this.positionPill(this.currentActiveTab, true);
+      if (window.innerWidth >= 768 && this.isPopoverOpen) {
+        this.closePopover();
+      }
     };
     window.addEventListener('resize', this.handleResize);
+
+    // Listener tombol Escape untuk menutup popover
+    this.handleKeyDown = (e) => {
+      if (e.key === 'Escape' && this.isPopoverOpen) {
+        this.closePopover();
+      }
+    };
+    window.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  /**
+   * Membuka menu popover / speed dial mobile di atas tombol [+]
+   */
+  openPopover() {
+    this.isPopoverOpen = true;
+    const popover = this.container.querySelector('#speed-dial-popover');
+    const backdrop = this.container.querySelector('#speed-dial-backdrop');
+    const icon = this.container.querySelector('#icon-bottom-quick-add');
+    if (popover) {
+      popover.classList.remove('hidden');
+    }
+    if (backdrop) {
+      backdrop.classList.remove('hidden');
+    }
+    if (icon) {
+      icon.classList.add('rotate-45');
+    }
+  }
+
+  /**
+   * Menutup menu popover / speed dial mobile
+   */
+  closePopover() {
+    this.isPopoverOpen = false;
+    const popover = this.container.querySelector('#speed-dial-popover');
+    const backdrop = this.container.querySelector('#speed-dial-backdrop');
+    const icon = this.container.querySelector('#icon-bottom-quick-add');
+    if (popover) {
+      popover.classList.add('hidden');
+    }
+    if (backdrop) {
+      backdrop.classList.add('hidden');
+    }
+    if (icon) {
+      icon.classList.remove('rotate-45');
+    }
+  }
+
+  /**
+   * Toggle status buka/tutup popover speed dial
+   */
+  togglePopover() {
+    if (this.isPopoverOpen) {
+      this.closePopover();
+    } else {
+      this.openPopover();
+    }
   }
 
   /**
@@ -64,6 +129,7 @@ export class BottomNav {
 
       // Event klik biasa
       btn.addEventListener('click', () => {
+        this.closePopover();
         const tab = btn.getAttribute('data-nav-tab');
         if (tab) {
           this.updateActiveTab(tab);
@@ -72,7 +138,7 @@ export class BottomNav {
       });
     });
 
-    // Tombol Quick Add Tengah (+) dengan respon visual halus
+    // Tombol Quick Add Tengah (+) dengan interaksi adaptif Mobile vs Desktop
     const quickAddBtn = this.container.querySelector('#btn-bottom-quick-add');
     if (quickAddBtn) {
       const handleQuickDown = () => {
@@ -87,8 +153,56 @@ export class BottomNav {
       quickAddBtn.addEventListener('pointerleave', handleQuickUp);
       quickAddBtn.addEventListener('pointercancel', handleQuickUp);
 
-      quickAddBtn.addEventListener('click', () => {
+      quickAddBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isMobile = window.innerWidth < 768;
+        if (!isMobile) {
+          // Desktop: langsung buka form transaksi manual
+          this.closePopover();
+          this.onQuickAdd();
+        } else {
+          // Mobile: buka speed-dial popover mengambang tepat di atas tombol [+]
+          this.togglePopover();
+        }
+      });
+    }
+
+    // Backdrop Transparan: klik di luar menu otomatis menutup popover
+    const backdrop = this.container.querySelector('#speed-dial-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closePopover();
+      });
+    }
+
+    // Aksi Speed-Dial 1: Catat Manual
+    const manualBtn = this.container.querySelector('#speed-dial-action-manual');
+    if (manualBtn) {
+      manualBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closePopover();
         this.onQuickAdd();
+      });
+    }
+
+    // Aksi Speed-Dial 2: Scan Struk
+    const scanBtn = this.container.querySelector('#speed-dial-action-scan');
+    if (scanBtn) {
+      scanBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closePopover();
+        this.onScanReceipt();
+      });
+    }
+
+    // Aksi Speed-Dial 3: Tanya AI
+    const askBtn = this.container.querySelector('#speed-dial-action-ask');
+    if (askBtn) {
+      askBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closePopover();
+        this.onAskAi();
       });
     }
   }
@@ -166,7 +280,11 @@ export class BottomNav {
     const activeTab = this.currentActiveTab;
 
     this.container.innerHTML = `
-      <nav class="fixed bottom-0 left-0 right-0 z-40 w-full pointer-events-auto bg-[#FFFFFF]/90 dark:bg-[#121214]/90 backdrop-blur-md border-t border-[#E4E4E7] dark:border-[#27272A] shadow-md transition-colors">
+      <!-- Backdrop Transparan Popover Speed-Dial (Auto-Dismiss saat mengetuk di luar) -->
+      <div id="speed-dial-backdrop" class="hidden fixed inset-0 z-40 bg-black/10 dark:bg-black/25"></div>
+
+      <!-- Bilah Navigasi Bawah dengan Safe Area Ergonomi Mobile -->
+      <nav class="fixed bottom-0 left-0 right-0 z-40 w-full pointer-events-auto bg-[#FFFFFF]/90 dark:bg-[#121214]/90 backdrop-blur-md border-t border-[#E4E4E7] dark:border-[#27272A] shadow-md transition-colors" style="padding-bottom: env(safe-area-inset-bottom, 12px);">
         <div id="bottom-nav-inner" class="max-w-lg mx-auto px-4 sm:px-6 py-2 flex items-center justify-around relative">
           
           <!-- Kapsul Aktif Frosted Liquid Glass (Spring Animation Physics: stiffness: 450, damping: 35) -->
@@ -204,15 +322,74 @@ export class BottomNav {
             <span class="text-[11px] mt-0.5">Dompet</span>
           </button>
 
-          <!-- Tombol Utama Tengah Mengambang: Add Transaction (Adaptif) -->
-          <div class="relative -top-4 z-20 flex items-center justify-center">
+          <!-- Floating Action Button (FAB) Tengah Terangkat & Speed-Dial Menu -->
+          <div id="center-fab-container" class="relative -mt-6 sm:-mt-5 z-50 flex items-center justify-center shrink-0 px-1">
+            
+            <!-- Speed-Dial Popover Menu (Mobile Only) -->
+            <div
+              id="speed-dial-popover"
+              class="hidden absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-56 p-2 rounded-2xl bg-[#FFFFFF] dark:bg-[#18181B] border border-[#E4E4E7] dark:border-[#27272A] shadow-2xl z-50 flex flex-col gap-1 select-none animate-in fade-in zoom-in-95 duration-150"
+            >
+              <div class="px-2 py-1 border-b border-[#E4E4E7]/60 dark:border-[#27272A]/60 mb-0.5">
+                <span class="text-[10px] font-bold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider block">
+                  Aksi Cepat
+                </span>
+              </div>
+
+              <!-- 1. Catat Manual -->
+              <button
+                type="button"
+                id="speed-dial-action-manual"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer select-none active:bg-zinc-200 dark:active:bg-zinc-700"
+              >
+                <div class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center shrink-0 text-sm">
+                  ✍️
+                </div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-xs font-bold text-[#09090B] dark:text-[#F4F4F5] block truncate">Catat Manual</span>
+                  <span class="text-[10px] text-[#71717A] dark:text-[#A1A1AA] block truncate">Formulir transaksi biasa</span>
+                </div>
+              </button>
+
+              <!-- 2. Scan Struk -->
+              <button
+                type="button"
+                id="speed-dial-action-scan"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer select-none active:bg-zinc-200 dark:active:bg-zinc-700"
+              >
+                <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 text-sm">
+                  📷
+                </div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-xs font-bold text-[#09090B] dark:text-[#F4F4F5] block truncate">Scan Struk</span>
+                  <span class="text-[10px] text-[#71717A] dark:text-[#A1A1AA] block truncate">Ekstraksi struk AI</span>
+                </div>
+              </button>
+
+              <!-- 3. Tanya AI -->
+              <button
+                type="button"
+                id="speed-dial-action-ask"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer select-none active:bg-zinc-200 dark:active:bg-zinc-700"
+              >
+                <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 text-sm">
+                  🤖
+                </div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-xs font-bold text-[#09090B] dark:text-[#F4F4F5] block truncate">Tanya AI</span>
+                  <span class="text-[10px] text-[#71717A] dark:text-[#A1A1AA] block truncate">Konsultasi keuangan</span>
+                </div>
+              </button>
+            </div>
+
+            <!-- Tombol Lingkaran Tengah (+) -->
             <button
               id="btn-bottom-quick-add"
               type="button"
               title="Catat Transaksi Cepat"
-              class="w-13 h-13 rounded-full bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] shadow-md flex items-center justify-center transition-colors duration-100 ease-out active:opacity-85 cursor-pointer ring-4 ring-[#F9F9F8] dark:ring-[#09090B]"
+              class="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] hover:bg-[#27272A] dark:hover:bg-[#E4E4E7] shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95 cursor-pointer ring-4 ring-[#FFFFFF] dark:ring-[#121214]"
             >
-              <i data-lucide="plus" class="w-6 h-6"></i>
+              <i data-lucide="plus" id="icon-bottom-quick-add" class="w-6 h-6 transition-transform duration-200"></i>
             </button>
           </div>
 
@@ -266,6 +443,9 @@ export class BottomNav {
     }
     if (this.handleResize) {
       window.removeEventListener('resize', this.handleResize);
+    }
+    if (this.handleKeyDown) {
+      window.removeEventListener('keydown', this.handleKeyDown);
     }
     this.container.innerHTML = '';
   }
