@@ -51,23 +51,52 @@ export function openTransactionModal(options = {}) {
         : (initialData.notes || ''))
     : '';
 
+  // Pencocokan rekening awal jika terdeteksi dari struk / draft
+  const initialAccountId = initialData?.accountId || initialData?.wallet_id || null;
+  const initialAccountName = (initialData?.account_name || initialData?.wallet_name || '').toLowerCase();
+
+  let matchedAccount = null;
+  if (initialAccountId) {
+    matchedAccount = accounts.find((a) => String(a.id) === String(initialAccountId));
+  }
+  if (!matchedAccount && initialAccountName) {
+    matchedAccount = accounts.find((a) =>
+      a.name.toLowerCase() === initialAccountName ||
+      a.name.toLowerCase().includes(initialAccountName) ||
+      initialAccountName.includes(a.name.toLowerCase())
+    );
+  }
+  const selectedAccountId = matchedAccount ? matchedAccount.id : (accounts[0]?.id || 'acc-main');
+
+  // Kategori bawaan untuk transaksi bertipe pemasukan
+  const defaultIncomeCategories = ['Gaji & Pemasukan', 'Gaji', 'Bonus', 'Investasi', 'Transfer Masuk', 'Pemasukan Lain'];
+  const baseCategoryNames = categories.map((c) => c.name);
+  const incomeCategoriesToAdd = defaultIncomeCategories.filter(
+    (inc) => !baseCategoryNames.some((cn) => cn.toLowerCase() === inc.toLowerCase())
+  );
+
+  const allCategoryNames = [
+    ...baseCategoryNames,
+    ...incomeCategoriesToAdd,
+  ];
+
   // Mencocokkan kategori AI dengan master kategori aplikasi
-  const matchingCat = categories.find(
-    (c) => c.name.toLowerCase() === rawCategory.toLowerCase() ||
-           c.name.toLowerCase().includes(rawCategory.toLowerCase()) ||
-           (rawCategory && rawCategory.toLowerCase().includes(c.name.toLowerCase()))
+  const matchingCat = allCategoryNames.find(
+    (cn) => cn.toLowerCase() === rawCategory.toLowerCase() ||
+           cn.toLowerCase().includes(rawCategory.toLowerCase()) ||
+           (rawCategory && rawCategory.toLowerCase().includes(cn.toLowerCase()))
   );
   let categoryMode = (!matchingCat && rawCategory) ? 'custom' : 'select';
-  const selectedCatName = matchingCat ? matchingCat.name : (rawCategory || categories[0]?.name || 'Lainnya');
+  const selectedCatName = matchingCat || (rawCategory || (initialType === 'income' ? (incomeCategoriesToAdd[0] || 'Gaji & Pemasukan') : (categories[0]?.name || 'Lainnya')));
 
   // Siapkan opsi kategori dropdown
   const categoryOptionsHtml = [
     (!matchingCat && rawCategory && rawCategory !== 'Lainnya')
       ? `<option value="${rawCategory}" selected>${rawCategory} (AI)</option>`
       : '',
-    ...categories.map((c) => {
-      const isSel = c.name === selectedCatName;
-      return `<option value="${c.name}" ${isSel ? 'selected' : ''}>${c.name}</option>`;
+    ...allCategoryNames.map((cName) => {
+      const isSel = cName === selectedCatName;
+      return `<option value="${cName}" ${isSel ? 'selected' : ''}>${cName}</option>`;
     }),
     `<option value="Lainnya" ${selectedCatName === 'Lainnya' ? 'selected' : ''}>Lainnya</option>`,
   ].filter(Boolean).join('');
@@ -136,9 +165,11 @@ export function openTransactionModal(options = {}) {
 
           <!-- Input Nominal -->
           <div>
-            <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Nominal (Rp)</label>
+            <label id="label-tx-amount" class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">
+              ${initialType === 'income' ? 'Nominal Pemasukan (Rp)' : 'Nominal (Rp)'}
+            </label>
             <div class="relative">
-              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm">Rp</span>
+              <span id="prefix-tx-amount" class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none ${initialType === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#71717A] dark:text-[#A1A1AA]'} font-bold text-sm">Rp</span>
               <input
                 id="tx_amount"
                 type="number"
@@ -147,7 +178,7 @@ export function openTransactionModal(options = {}) {
                 required
                 value="${initialAmount}"
                 placeholder="0"
-                class="w-full pl-11 pr-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] bg-[#FFFFFF] dark:bg-[#09090B] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] font-extrabold text-lg placeholder-zinc-300 dark:placeholder-zinc-600 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                class="w-full pl-11 pr-4 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] bg-[#FFFFFF] dark:bg-[#09090B] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 ${initialType === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-[#09090B] dark:text-[#F4F4F5]'} font-extrabold text-lg placeholder-zinc-300 dark:placeholder-zinc-600 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               >
             </div>
           </div>
@@ -201,14 +232,16 @@ export function openTransactionModal(options = {}) {
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Rekening / Dompet</label>
+              <label id="label-tx-account" class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">
+                ${initialType === 'income' ? 'Rekening Tujuan / Penerima' : 'Rekening / Dompet'}
+              </label>
               <select
                 id="tx_account"
                 required
                 class="w-full px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm font-medium bg-[#FFFFFF] dark:bg-[#09090B] outline-none"
               >
                 ${accounts.length > 0
-                  ? accounts.map((a, idx) => `<option value="${a.id}" ${idx === 0 ? 'selected' : ''}>${a.name} (${a.provider || 'Bank'})</option>`).join('')
+                  ? accounts.map((a) => `<option value="${a.id}" ${String(a.id) === String(selectedAccountId) ? 'selected' : ''}>${a.name} (${a.provider || 'Bank'})</option>`).join('')
                   : '<option value="acc-main" selected>Dompet Utama (Tunai)</option>'}
               </select>
             </div>
@@ -229,13 +262,15 @@ export function openTransactionModal(options = {}) {
             </div>
 
             <div class="w-full max-w-full min-w-0">
-              <label class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">Catatan</label>
+              <label id="label-tx-note" class="block text-xs font-semibold text-[#71717A] dark:text-[#A1A1AA] uppercase tracking-wider mb-1.5">
+                ${initialType === 'income' ? 'Penerimaan / Sumber Dana' : 'Catatan'}
+              </label>
               <input
                 id="tx_note"
                 type="text"
                 required
                 value="${initialNote}"
-                placeholder="Contoh: Makan siang tim"
+                placeholder="${initialType === 'income' ? 'Contoh: Transfer gaji, bonus, penerimaan dana' : 'Contoh: Makan siang tim'}"
                 class="w-full max-w-full min-w-0 box-border px-3 py-2.5 rounded-xl border border-[#E4E4E7] dark:border-[#27272A] focus:border-[#09090B] dark:focus:border-[#F4F4F5] focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-[#09090B] dark:text-[#F4F4F5] text-sm bg-[#FFFFFF] dark:bg-[#09090B] placeholder-zinc-300 dark:placeholder-zinc-600 outline-none"
               >
             </div>
@@ -269,8 +304,16 @@ export function openTransactionModal(options = {}) {
 
   renderIcons(root);
 
-  // Setup radio tipe transaksi toggle visual
+  // Setup radio tipe transaksi toggle visual & labels
   const radioLabels = root.querySelectorAll('input[name="tx_type"]');
+  const labelTxAmount = root.querySelector('#label-tx-amount');
+  const prefixTxAmount = root.querySelector('#prefix-tx-amount');
+  const amountInput = root.querySelector('#tx_amount');
+  const labelTxAccount = root.querySelector('#label-tx-account');
+  const labelTxNote = root.querySelector('#label-tx-note');
+  const noteInput = root.querySelector('#tx_note');
+  const categorySelect = root.querySelector('#tx_category');
+
   radioLabels.forEach((radio) => {
     radio.addEventListener('change', (e) => {
       const isExpense = e.target.value === 'expense';
@@ -280,9 +323,43 @@ export function openTransactionModal(options = {}) {
       if (isExpense) {
         expenseLabel.className = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer border-rose-500/60 bg-rose-500/10 text-rose-700 dark:text-rose-400 font-bold text-sm transition-all';
         incomeLabel.className = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 border-[#E4E4E7] dark:border-[#27272A] bg-zinc-50/50 dark:bg-zinc-800/50 text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm cursor-pointer transition-all';
+
+        // Sesuaikan styling & label untuk pengeluaran
+        if (labelTxAmount) labelTxAmount.textContent = 'Nominal (Rp)';
+        if (prefixTxAmount) prefixTxAmount.className = 'absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm';
+        if (amountInput) {
+          amountInput.classList.remove('text-emerald-600', 'dark:text-emerald-400');
+          amountInput.classList.add('text-[#09090B]', 'dark:text-[#F4F4F5]');
+        }
+        if (labelTxAccount) labelTxAccount.textContent = 'Rekening / Dompet';
+        if (labelTxNote) labelTxNote.textContent = 'Catatan';
+        if (noteInput && (!noteInput.value || noteInput.placeholder.includes('penerimaan'))) {
+          noteInput.placeholder = 'Contoh: Makan siang tim';
+        }
       } else {
         incomeLabel.className = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer border-emerald-600/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold text-sm transition-all';
         expenseLabel.className = 'flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 border-[#E4E4E7] dark:border-[#27272A] bg-zinc-50/50 dark:bg-zinc-800/50 text-[#71717A] dark:text-[#A1A1AA] font-bold text-sm cursor-pointer transition-all';
+
+        // Sesuaikan styling & label hijau untuk pemasukan
+        if (labelTxAmount) labelTxAmount.textContent = 'Nominal Pemasukan (Rp)';
+        if (prefixTxAmount) prefixTxAmount.className = 'absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400 font-bold text-sm';
+        if (amountInput) {
+          amountInput.classList.remove('text-[#09090B]', 'dark:text-[#F4F4F5]');
+          amountInput.classList.add('text-emerald-600', 'dark:text-emerald-400');
+        }
+        if (labelTxAccount) labelTxAccount.textContent = 'Rekening Tujuan / Penerima';
+        if (labelTxNote) labelTxNote.textContent = 'Penerimaan / Sumber Dana';
+        if (noteInput && (!noteInput.value || noteInput.placeholder.includes('Makan siang'))) {
+          noteInput.placeholder = 'Contoh: Transfer gaji, bonus, penerimaan dana';
+        }
+
+        // Tawarkan kategori pemasukan jika saat ini masih di kategori belanja biasa
+        if (categorySelect && (categorySelect.value === 'Makanan & Minuman' || categorySelect.value === 'Belanja' || categorySelect.value === 'Transportasi')) {
+          const incOpt = categorySelect.querySelector('option[value="Gaji & Pemasukan"]') || categorySelect.querySelector('option[value="Gaji"]');
+          if (incOpt) {
+            categorySelect.value = incOpt.value;
+          }
+        }
       }
     });
   });
@@ -661,14 +738,36 @@ export function openScanReceiptModal(options = {}) {
       // 3. Matikan stream webcam jika masih aktif & tutup modal kamera/scan
       cleanupAndClose();
 
+      // Deteksi transaksi masuk / income dari hasil ekstraksi Gemini AI
+      const rawText = `${extracted.merchant || ''} ${extracted.notes || ''} ${extracted.category || ''} ${extracted.type || ''}`.toLowerCase();
+      const isIncome = extracted.type === 'income' ||
+        extracted.is_income === true ||
+        rawText.includes('transfer masuk') ||
+        rawText.includes('dana masuk') ||
+        rawText.includes('uang masuk') ||
+        rawText.includes('penerimaan') ||
+        rawText.includes('gaji') ||
+        rawText.includes('payroll') ||
+        rawText.includes('setoran') ||
+        rawText.includes('top up') ||
+        rawText.includes('topup');
+
+      const txType = isIncome ? 'income' : (extracted.type || 'expense');
+      const defaultCategory = isIncome
+        ? (extracted.category && extracted.category !== 'Belanja' ? extracted.category : 'Gaji & Pemasukan')
+        : (extracted.category || 'Belanja');
+
       // 4. Arahkan pengguna ke form transaksi yang sudah terisi untuk diverifikasi sebelum disimpan
       openTransactionModal({
         initialData: {
+          type: txType,
           amount: extracted.amount || 0,
           date: extracted.date || new Date().toISOString().slice(0, 10),
-          category: extracted.category || 'Belanja',
+          category: defaultCategory,
           notes: extracted.notes || '',
           merchant: extracted.merchant || '',
+          accountId: extracted.accountId || extracted.wallet_id || null,
+          account_name: extracted.account_name || extracted.wallet_name || null,
           receiptImage: compressed.base64,
         },
         onSuccess: options.onSuccess,
@@ -2366,6 +2465,456 @@ export function openConfirmDeleteCategoryModal(options = {}) {
 }
 
 /**
+ * Helper untuk parsing intensi pencatatan transaksi dari pesan teks obrolan AI
+ * @param {string} text
+ * @param {Array} accounts
+ * @param {Array} categories
+ * @returns {Object|null}
+ */
+export function parseTransactionIntent(text, accounts = [], categories = []) {
+  if (!text || typeof text !== 'string') return null;
+  const lower = text.toLowerCase().trim();
+
+  // Abaikan jika pertanyaan umum non-pencatatan
+  if (
+    lower.includes('?') ||
+    lower.startsWith('apakah') ||
+    lower.startsWith('bagaimana') ||
+    lower.startsWith('gimana') ||
+    lower.startsWith('apa saja') ||
+    lower.startsWith('kenapa') ||
+    lower.startsWith('mengapa') ||
+    lower.includes('aman kah') ||
+    lower.includes('aman tidak') ||
+    lower.includes('aman gak')
+  ) {
+    return null;
+  }
+
+  // 1. Deteksi Nominal Transaksi
+  let amount = 0;
+  const jtMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:jt|juta)\b/);
+  const rbMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:rb|ribu|k)\b/);
+  const rpMatch = lower.match(/(?:rp\.?|idr)\s*(\d+(?:[.,]\d+)*)/);
+  const plainNumberMatch = lower.match(/\b(\d{1,3}(?:\.\d{3})+|\d{4,9})\b/);
+
+  if (jtMatch) {
+    amount = parseFloat(jtMatch[1].replace(',', '.')) * 1000000;
+  } else if (rbMatch) {
+    amount = parseFloat(rbMatch[1].replace(',', '.')) * 1000;
+  } else if (rpMatch) {
+    const raw = rpMatch[1].replace(/\./g, '').replace(',', '.');
+    amount = parseFloat(raw);
+  } else if (plainNumberMatch) {
+    const raw = plainNumberMatch[1].replace(/\./g, '').replace(',', '.');
+    amount = parseFloat(raw);
+  }
+
+  if (!amount || isNaN(amount) || amount <= 0) return null;
+
+  // 2. Deteksi Tipe Transaksi (Income vs Expense)
+  const incomeKeywords = [
+    'pemasukan', 'income', 'gaji', 'transfer masuk', 'dana masuk',
+    'uang masuk', 'freelance', 'bonus', 'dividen', 'cair', 'dapat uang',
+    'terima uang', 'penerimaan', 'setoran'
+  ];
+  const isIncome = incomeKeywords.some((kw) => lower.includes(kw));
+  const type = isIncome ? 'income' : 'expense';
+
+  // 3. Deteksi Rekening
+  let matchedAccount = null;
+  let accountClarificationNeeded = true;
+  for (const acc of accounts) {
+    if (lower.includes(acc.name.toLowerCase())) {
+      matchedAccount = acc;
+      accountClarificationNeeded = false;
+      break;
+    }
+  }
+  if (!matchedAccount) {
+    const commonAliases = ['bni', 'bca', 'mandiri', 'bri', 'gopay', 'ovo', 'dana', 'shopeepay', 'cash', 'tunai', 'jago', 'seabank'];
+    for (const alias of commonAliases) {
+      if (lower.includes(alias)) {
+        matchedAccount = accounts.find((a) => a.name.toLowerCase().includes(alias)) || { id: 'acc-' + alias, name: alias.toUpperCase() };
+        accountClarificationNeeded = false;
+        break;
+      }
+    }
+  }
+  if (!matchedAccount) {
+    matchedAccount = accounts[0] || { id: 'acc-main', name: 'Dompet Utama' };
+    accountClarificationNeeded = true;
+  }
+
+  // 4. Deteksi Kategori
+  let categoryName = isIncome ? 'Gaji & Pemasukan' : 'Belanja';
+  const categoryKeywords = {
+    'Makanan': ['makan', 'kopi', 'ngopi', 'cafe', 'resto', 'sarapan', 'lunch', 'dinner', 'snack', 'minum', 'bakso', 'mie'],
+    'Transportasi': ['bensin', 'pertalite', 'pertamax', 'ojol', 'grab', 'gojek', 'parkir', 'tol', 'kereta', 'mrt', 'busway'],
+    'Tagihan': ['listrik', 'pln', 'pdam', 'air', 'wifi', 'indihome', 'pulsa', 'kuota', 'bpjs', 'netflix', 'spotify'],
+    'Belanja': ['belanja', 'supermarket', 'indomaret', 'alfamart', 'shopee', 'tokopedia', 'baju', 'kaos', 'sepatu'],
+    'Gaji': ['gaji', 'salary', 'payroll', 'upah', 'freelance', 'honor'],
+    'Kesehatan': ['obat', 'dokter', 'apotek', 'klinik', 'vitamin', 'rumahsakit', 'rs'],
+  };
+
+  for (const cat of categories) {
+    if (lower.includes(cat.name.toLowerCase())) {
+      categoryName = cat.name;
+      break;
+    }
+  }
+  if (categoryName === (isIncome ? 'Gaji & Pemasukan' : 'Belanja')) {
+    for (const [catGroup, words] of Object.entries(categoryKeywords)) {
+      if (words.some((w) => lower.includes(w))) {
+        const found = categories.find((c) => c.name.toLowerCase().includes(catGroup.toLowerCase()));
+        categoryName = found ? found.name : (catGroup === 'Makanan' ? 'Makanan & Minuman' : catGroup);
+        break;
+      }
+    }
+  }
+
+  // 5. Bersihkan Deskripsi / Keterangan Transaksi
+  let desc = text;
+  const stripWords = [
+    'catat', 'tolong', 'masukkan', 'tambahkan', 'pengeluaran', 'pemasukan', 'transaksi',
+    'pakai', 'via', 'dari', 'ke', 'buat', 'untuk', 'sebesar', 'seharga', 'rp', 'idr', 'beli', 'bayar'
+  ];
+  const words = desc.split(/\s+/).filter((w) => {
+    const lw = w.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (stripWords.includes(lw)) return false;
+    if (accounts.some((a) => a.name.toLowerCase() === lw)) return false;
+    if (['bni', 'bca', 'mandiri', 'bri', 'gopay', 'ovo', 'dana'].includes(lw)) return false;
+    if (w.match(/^(?:rp\.?|idr)?\d+(?:[.,]\d+)*(?:jt|juta|rb|ribu|k)?$/i)) return false;
+    return true;
+  });
+  desc = words.join(' ').trim();
+  if (!desc) {
+    desc = isIncome ? 'Penerimaan Dana' : categoryName;
+  }
+  desc = desc.charAt(0).toUpperCase() + desc.slice(1);
+
+  return {
+    type,
+    amount,
+    description: desc,
+    category_name: categoryName,
+    account_name: matchedAccount.name,
+    accountId: matchedAccount.id,
+    accountClarificationNeeded,
+  };
+}
+
+/**
+ * Merender kartu draft transaksi interaktif (Opsi B) di balon pesan AI Chat
+ * @param {Object} data
+ * @param {('expense'|'income')} [data.type='expense']
+ * @param {number} data.amount
+ * @param {string} [data.description]
+ * @param {string} [data.category_name]
+ * @param {string} [data.account_name]
+ * @param {string} [data.accountId]
+ * @param {string} [data.date]
+ * @param {Object} [options]
+ * @param {(tx: Object) => void} [options.onSaveDraft]
+ * @returns {HTMLDivElement}
+ */
+export function renderDraftTransactionCard(data = {}, options = {}) {
+  const card = document.createElement('div');
+  card.className = 'rounded-2xl p-3.5 mt-2 bg-white dark:bg-[#18181B] border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col gap-2.5 text-left text-xs sm:text-sm';
+
+  const type = data.type === 'income' ? 'income' : 'expense';
+  const amountNum = Number(data.amount) || 0;
+  const description = data.description || data.notes || data.merchant || 'Transaksi';
+  const categoryName = data.category_name || data.category || (type === 'income' ? 'Gaji & Pemasukan' : 'Belanja');
+  let accountName = data.account_name || data.accountName || 'Dompet Utama';
+  let accountId = data.accountId || data.wallet_id || null;
+  const date = data.date || new Date().toISOString().slice(0, 10);
+
+  let isSaved = false;
+  let isSaving = false;
+
+  const isIncome = type === 'income';
+
+  card.innerHTML = `
+    <!-- Header Kartu: Badge Tipe & Nominal -->
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-1.5">
+        ${isIncome
+          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+               <i data-lucide="arrow-up-right" class="w-3 h-3"></i>
+               Pemasukan
+             </span>`
+          : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+               <i data-lucide="arrow-down-left" class="w-3 h-3"></i>
+               Pengeluaran
+             </span>`
+        }
+      </div>
+      <span class="text-sm sm:text-base font-extrabold ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}">
+        ${isIncome ? '+' : '-'}${formatRupiah(amountNum)}
+      </span>
+    </div>
+
+    <!-- Baris Detail: Rekening, Kategori, Keterangan -->
+    <div class="flex flex-col gap-1.5 py-0.5">
+      <div class="flex items-center gap-2 text-xs flex-wrap">
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium border border-zinc-200/60 dark:border-zinc-700/60 text-xs">
+          <i data-lucide="wallet" class="w-3 h-3 text-zinc-400"></i>
+          <span class="draft-account-label">${accountName}</span>
+        </span>
+        <span class="inline-flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
+          <i data-lucide="folder-open" class="w-3 h-3 text-zinc-400"></i>
+          <span class="draft-category-label">${categoryName}</span>
+        </span>
+      </div>
+      <p class="text-xs text-zinc-700 dark:text-zinc-300 font-medium line-clamp-2 mt-0.5">
+        ${description}
+      </p>
+    </div>
+
+    <!-- Tombol Aksi (Dua Tombol Sejajar) -->
+    <div class="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+      <button
+        type="button"
+        class="btn-save-draft bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] px-3 py-1.5 rounded-xl text-xs font-semibold hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+      >
+        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+        <span>Simpan ke Kas</span>
+      </button>
+
+      <button
+        type="button"
+        class="btn-edit-draft border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs px-3 py-1.5 rounded-xl text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer flex items-center justify-center gap-1 active:scale-95"
+      >
+        <i data-lucide="pencil" class="w-3 h-3"></i>
+        <span>Edit</span>
+      </button>
+    </div>
+  `;
+
+  renderIcons(card);
+
+  const btnSave = card.querySelector('.btn-save-draft');
+  const btnEdit = card.querySelector('.btn-edit-draft');
+  const labelAccount = card.querySelector('.draft-account-label');
+
+  // Helper method untuk memperbarui rekening secara reaktif
+  card.updateAccount = (newAccName, newAccId) => {
+    accountName = newAccName;
+    if (newAccId) accountId = newAccId;
+    data.account_name = newAccName;
+    if (newAccId) data.accountId = newAccId;
+    if (labelAccount) {
+      labelAccount.textContent = newAccName;
+    }
+  };
+
+  card.isSaved = () => isSaved;
+
+  // Interaksi tombol Simpan ke Kas
+  btnSave?.addEventListener('click', async () => {
+    if (isSaved || isSaving) return;
+    isSaving = true;
+
+    btnSave.disabled = true;
+    btnSave.innerHTML = `
+      <div class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+      <span>Menyimpan...</span>
+    `;
+
+    try {
+      const state = getState();
+      const accounts = state.accounts || [];
+      const categories = state.categories || [];
+
+      // Cari rekening target
+      let targetAccount = null;
+      if (accountId) {
+        targetAccount = accounts.find((a) => String(a.id) === String(accountId));
+      }
+      if (!targetAccount && accountName) {
+        targetAccount = accounts.find(
+          (a) => a.name.toLowerCase() === accountName.toLowerCase() ||
+                 a.name.toLowerCase().includes(accountName.toLowerCase()) ||
+                 accountName.toLowerCase().includes(a.name.toLowerCase())
+        );
+      }
+      if (!targetAccount) {
+        targetAccount = accounts[0] || { id: 'acc-main', name: 'Dompet Utama' };
+      }
+
+      const txCategory = categoryName || (type === 'income' ? 'Gaji & Pemasukan' : 'Belanja');
+      const txNotes = description || 'Transaksi';
+
+      const newTx = {
+        id: `tx-${Date.now()}`,
+        type,
+        amount: amountNum,
+        category: txCategory,
+        accountId: targetAccount.id,
+        wallet_id: targetAccount.id,
+        wallet: targetAccount.id,
+        accountName: targetAccount.name,
+        date: date || new Date().toISOString().slice(0, 10),
+        notes: txNotes,
+        note: txNotes,
+        receiptImage: data.receiptImage || null,
+        created_at: new Date().toISOString(),
+      };
+
+      // Perbarui saldo akun
+      const updatedAccounts = accounts.map((a) => {
+        if (String(a.id) === String(targetAccount.id)) {
+          const currentBal = Number(a.balance) || 0;
+          return {
+            ...a,
+            balance: type === 'expense' ? currentBal - amountNum : currentBal + amountNum,
+          };
+        }
+        return a;
+      });
+
+      // Perbarui pemakaian anggaran jika pengeluaran
+      const updatedCategories = categories.map((c) => {
+        if (c.name === txCategory && type === 'expense') {
+          return {
+            ...c,
+            spent: (Number(c.spent) || 0) + amountNum,
+          };
+        }
+        return c;
+      });
+
+      // Simpan ke state global
+      setState({
+        transactions: [newTx, ...(state.transactions || [])],
+        accounts: updatedAccounts,
+        categories: updatedCategories,
+      });
+
+      // Pemicu event dispatch
+      document.dispatchEvent(new CustomEvent('transaction-saved', { detail: newTx }));
+
+      if (typeof options.onSaveDraft === 'function') {
+        options.onSaveDraft(newTx);
+      }
+
+      showToast('Transaksi berhasil disimpan ke kas!', 'success');
+
+      // Transformasi tombol ke status visual "✓ Tersimpan" (disabled)
+      isSaved = true;
+      btnSave.disabled = true;
+      btnSave.className = 'btn-save-draft bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-default opacity-100';
+      btnSave.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> <span>✓ Tersimpan</span>`;
+
+      if (btnEdit) {
+        btnEdit.disabled = true;
+        btnEdit.className = 'btn-edit-draft border border-zinc-200/50 dark:border-zinc-800 text-xs px-3 py-1.5 rounded-xl text-zinc-400 dark:text-zinc-600 opacity-40 cursor-not-allowed pointer-events-none flex items-center justify-center gap-1';
+      }
+
+      renderIcons(card);
+    } catch (err) {
+      console.error('[renderDraftTransactionCard] Gagal menyimpan draft transaksi:', err);
+      btnSave.disabled = false;
+      btnSave.className = 'btn-save-draft bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] px-3 py-1.5 rounded-xl text-xs font-semibold hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs';
+      btnSave.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> <span>Simpan ke Kas</span>`;
+      renderIcons(card);
+      showToast('Gagal menyimpan transaksi: ' + (err.message || err), 'error');
+    } finally {
+      isSaving = false;
+    }
+  });
+
+  // Interaksi tombol Edit
+  btnEdit?.addEventListener('click', () => {
+    if (isSaved) return;
+    openTransactionModal({
+      initialData: {
+        type,
+        amount: amountNum,
+        category: categoryName,
+        notes: description,
+        merchant: '',
+        accountId,
+        account_name: accountName,
+        date,
+      },
+      onSuccess: (savedTx) => {
+        isSaved = true;
+        btnSave.disabled = true;
+        btnSave.className = 'btn-save-draft bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 cursor-default opacity-100';
+        btnSave.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> <span>✓ Tersimpan</span>`;
+
+        if (btnEdit) {
+          btnEdit.disabled = true;
+          btnEdit.className = 'btn-edit-draft border border-zinc-200/50 dark:border-zinc-800 text-xs px-3 py-1.5 rounded-xl text-zinc-400 dark:text-zinc-600 opacity-40 cursor-not-allowed pointer-events-none flex items-center justify-center gap-1';
+        }
+
+        renderIcons(card);
+
+        if (typeof options.onSaveDraft === 'function') {
+          options.onSaveDraft(savedTx);
+        }
+      },
+    });
+  });
+
+  return card;
+}
+
+/**
+ * Merender deretan chip interaktif rekening aktif untuk quick-select
+ * @param {Object} [options]
+ * @param {Array} [options.accounts]
+ * @param {string} [options.label='Pilih rekening:']
+ * @param {(account: Object) => void} [options.onSelect]
+ * @returns {HTMLDivElement}
+ */
+export function renderAccountQuickSelectChips(options = {}) {
+  const accounts = options.accounts || getState().accounts || [];
+  const container = document.createElement('div');
+  container.className = 'account-chips-container mt-2 flex flex-col gap-1.5';
+
+  const labelText = options.label || 'Pilih rekening:';
+  const label = document.createElement('p');
+  label.className = 'text-[11px] font-medium text-zinc-500 dark:text-zinc-400';
+  label.textContent = labelText;
+  container.appendChild(label);
+
+  const chipsWrapper = document.createElement('div');
+  chipsWrapper.className = 'flex items-center gap-1.5 flex-wrap';
+
+  accounts.forEach((acc) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'account-chip px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 select-none';
+    chip.setAttribute('data-account-id', acc.id);
+    chip.setAttribute('data-account-name', acc.name);
+    chip.innerHTML = `
+      <i data-lucide="wallet" class="w-3 h-3 text-zinc-400"></i>
+      <span>${acc.name}</span>
+    `;
+
+    chip.addEventListener('click', () => {
+      if (typeof options.onSelect === 'function') {
+        options.onSelect(acc);
+      }
+      chipsWrapper.querySelectorAll('.account-chip').forEach((c) => {
+        c.className = 'account-chip px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 select-none';
+      });
+      chip.className = 'account-chip px-2.5 py-1 rounded-full text-xs font-semibold bg-[#09090B] dark:bg-white text-white dark:text-[#09090B] border border-transparent transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 select-none shadow-xs';
+      renderIcons(chipsWrapper);
+    });
+
+    chipsWrapper.appendChild(chip);
+  });
+
+  container.appendChild(chipsWrapper);
+  renderIcons(container);
+  return container;
+}
+
+/**
  * Menampilkan Modal / Drawer Tanya AI Finansial
  * Asisten AI cerdas untuk konsultasi anggaran, evaluasi pengeluaran, dan burn rate.
  * @param {Object} [options]
@@ -2642,6 +3191,8 @@ export function openChatAiModal(options = {}) {
     `;
   };
 
+  let activeDraftCard = null;
+
   const handleSendMessage = (text) => {
     const trimmed = (text || '').trim();
     if (!trimmed || !messagesContainer) return;
@@ -2657,7 +3208,94 @@ export function openChatAiModal(options = {}) {
     messagesContainer.appendChild(userBubble);
     scrollToBottom();
 
-    // Render respon AI (simulasi cepat real-time)
+    // 1. Periksa apakah user mengklarifikasi rekening untuk draft aktif yang belum disimpan
+    const currentAccounts = getState().accounts || [];
+    const matchingAcc = currentAccounts.find((a) =>
+      trimmed.toLowerCase() === a.name.toLowerCase() ||
+      trimmed.toLowerCase().includes(a.name.toLowerCase()) ||
+      a.name.toLowerCase().includes(trimmed.toLowerCase())
+    );
+
+    if (activeDraftCard && !activeDraftCard.isSaved() && matchingAcc && !trimmed.match(/\d/)) {
+      setTimeout(() => {
+        activeDraftCard.updateAccount(matchingAcc.name, matchingAcc.id);
+        const aiBubble = document.createElement('div');
+        aiBubble.className = 'flex items-start gap-2.5 animate-in fade-in duration-150';
+        aiBubble.innerHTML = `
+          <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
+            <i data-lucide="bot" class="w-4 h-4"></i>
+          </div>
+          <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[88%] space-y-1.5 border border-zinc-200/60 dark:border-zinc-700/60">
+            <p>Rekening draft telah disesuaikan ke <strong>${matchingAcc.name}</strong>. Silakan klik tombol <strong>Simpan ke Kas</strong> pada kartu di atas untuk menyimpan. 👍</p>
+          </div>
+        `;
+        messagesContainer.appendChild(aiBubble);
+        renderIcons(aiBubble);
+        scrollToBottom();
+      }, 120);
+      return;
+    }
+
+    // 2. Periksa apakah pesan merupakan intensi pencatatan transaksi (Draft Card)
+    const transactionIntent = parseTransactionIntent(trimmed, currentAccounts, getState().categories || []);
+    if (transactionIntent) {
+      setTimeout(() => {
+        const typeLabel = transactionIntent.type === 'income' ? 'pemasukan' : 'pengeluaran';
+        const aiBubble = document.createElement('div');
+        aiBubble.className = 'flex items-start gap-2.5 animate-in fade-in duration-150';
+
+        const aiBubbleInner = document.createElement('div');
+        aiBubbleInner.className = 'bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[90%] sm:max-w-[88%] space-y-2 border border-zinc-200/60 dark:border-zinc-700/60 flex flex-col';
+
+        const introText = document.createElement('p');
+        introText.innerHTML = `Saya sudah menyiapkan draft pencatatan <strong>${typeLabel}</strong> untuk Anda:`;
+        aiBubbleInner.appendChild(introText);
+
+        const draftCard = renderDraftTransactionCard(transactionIntent, {
+          onSaveDraft: () => {
+            activeDraftCard = null;
+          },
+        });
+        activeDraftCard = draftCard;
+        aiBubbleInner.appendChild(draftCard);
+
+        // Jika klarifikasi rekening dibutuhkan & terdapat rekening aktif
+        if (transactionIntent.accountClarificationNeeded && currentAccounts.length > 0) {
+          const clarificationMsg = document.createElement('p');
+          clarificationMsg.className = 'text-xs text-zinc-500 dark:text-zinc-400 mt-1';
+          clarificationMsg.textContent = transactionIntent.type === 'income'
+            ? 'Masuk ke rekening mana nih? Klik salah satu di bawah jika ingin mengubah:'
+            : 'Bayar pakai apa nih? Klik salah satu di bawah jika ingin mengubah:';
+          aiBubbleInner.appendChild(clarificationMsg);
+
+          const chipsEl = renderAccountQuickSelectChips({
+            accounts: currentAccounts,
+            label: 'Pilihan rekening aktif:',
+            onSelect: (selectedAcc) => {
+              draftCard.updateAccount(selectedAcc.name, selectedAcc.id);
+              if (chatInput) {
+                chatInput.value = selectedAcc.name;
+              }
+              showToast(`Rekening diatur ke ${selectedAcc.name}`, 'info');
+            },
+          });
+          aiBubbleInner.appendChild(chipsEl);
+        }
+
+        aiBubble.innerHTML = `
+          <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
+            <i data-lucide="bot" class="w-4 h-4"></i>
+          </div>
+        `;
+        aiBubble.appendChild(aiBubbleInner);
+        messagesContainer.appendChild(aiBubble);
+        renderIcons(aiBubble);
+        scrollToBottom();
+      }, 120);
+      return;
+    }
+
+    // 3. Render respon AI umum (simulasi cepat real-time)
     setTimeout(() => {
       const aiReplyContent = generateAiReply(trimmed);
       const aiBubble = document.createElement('div');
@@ -2749,6 +3387,7 @@ export function openChatAiModal(options = {}) {
     // Klik Hapus (Clear Chat)
     confirmOverlay.querySelector('#btn-confirm-execute-clear')?.addEventListener('click', () => {
       closeConfirmDialog();
+      activeDraftCard = null;
       if (messagesContainer) {
         messagesContainer.innerHTML = `
           <div class="py-1 text-center animate-in fade-in duration-150">
