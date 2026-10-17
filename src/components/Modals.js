@@ -2403,7 +2403,7 @@ export function openChatAiModal(options = {}) {
   const getWelcomeMessageHtml = () => `
     <!-- Welcome Message from AI -->
     <div class="flex items-start gap-2.5">
-      <div class="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+      <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
         <i data-lucide="bot" class="w-4 h-4"></i>
       </div>
       <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[88%] space-y-2 border border-zinc-200/60 dark:border-zinc-700/60">
@@ -2426,7 +2426,7 @@ export function openChatAiModal(options = {}) {
         <!-- Header Modal -->
         <div class="flex items-center justify-between p-3.5 sm:p-5 border-b border-[#E4E4E7] dark:border-[#27272A] shrink-0 bg-white/50 dark:bg-[#121214]/50 backdrop-blur-md">
           <div class="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 mr-2 sm:mr-3">
-            <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+            <div class="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
               <i data-lucide="bot" class="w-5 h-5"></i>
             </div>
             <div class="min-w-0 flex-1">
@@ -2663,7 +2663,7 @@ export function openChatAiModal(options = {}) {
       const aiBubble = document.createElement('div');
       aiBubble.className = 'flex items-start gap-2.5 animate-in fade-in duration-150';
       aiBubble.innerHTML = `
-        <div class="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+        <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[#09090B] dark:text-[#F4F4F5] border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center shrink-0">
           <i data-lucide="bot" class="w-4 h-4"></i>
         </div>
         <div class="bg-zinc-100 dark:bg-zinc-800/80 text-[#09090B] dark:text-[#F4F4F5] p-3.5 rounded-2xl rounded-tl-xs max-w-[88%] space-y-1.5 border border-zinc-200/60 dark:border-zinc-700/60">
@@ -2695,25 +2695,74 @@ export function openChatAiModal(options = {}) {
     });
   });
 
-  // Event bersihkan obrolan (Clear Chat UI)
+  // Event bersihkan obrolan (Custom In-App Confirm Dialog)
   const clearChatBtn = root.querySelector('#btn-clear-chat-ai');
   clearChatBtn?.addEventListener('click', () => {
-    const isConfirmed = window.confirm('Bersihkan semua riwayat percakapan di layar?');
-    if (!isConfirmed) return;
+    if (root.querySelector('#clear-chat-confirm-backdrop')) return;
 
-    if (messagesContainer) {
-      messagesContainer.innerHTML = `
-        <div class="py-1 text-center animate-in fade-in duration-150">
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-[#71717A] dark:text-[#A1A1AA] border border-zinc-200/60 dark:border-zinc-700/60">
-            <i data-lucide="trash-2" class="w-3 h-3 text-rose-500"></i>
-            Riwayat percakapan dibersihkan
-          </span>
+    const confirmOverlay = document.createElement('div');
+    confirmOverlay.id = 'clear-chat-confirm-backdrop';
+    confirmOverlay.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150';
+    confirmOverlay.innerHTML = `
+      <div id="clear-chat-confirm-card" class="w-full max-w-xs sm:max-w-sm rounded-2xl bg-white dark:bg-[#18181B] border border-zinc-200 dark:border-zinc-800 p-5 shadow-2xl flex flex-col items-center text-center zoom-in-95 duration-150">
+        <div class="w-11 h-11 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center mb-3">
+          <i data-lucide="trash-2" class="w-5 h-5"></i>
         </div>
-        ${getWelcomeMessageHtml()}
-      `;
-      renderIcons(messagesContainer);
-      scrollToBottom();
-    }
+        <h4 class="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">Bersihkan Percakapan?</h4>
+        <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-5">Semua riwayat obrolan di layar akan dikosongkan kembali ke awal.</p>
+        <div class="flex items-center gap-2.5 w-full">
+          <button
+            type="button"
+            id="btn-confirm-cancel-clear"
+            class="flex-1 px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer active:scale-95"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            id="btn-confirm-execute-clear"
+            class="flex-1 px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer shadow-sm active:scale-95"
+          >
+            Hapus
+          </button>
+        </div>
+      </div>
+    `;
+
+    root.appendChild(confirmOverlay);
+    renderIcons(confirmOverlay);
+
+    const closeConfirmDialog = () => {
+      confirmOverlay.remove();
+    };
+
+    // Klik Batal
+    confirmOverlay.querySelector('#btn-confirm-cancel-clear')?.addEventListener('click', closeConfirmDialog);
+
+    // Klik Backdrop luar
+    confirmOverlay.addEventListener('click', (e) => {
+      if (e.target.id === 'clear-chat-confirm-backdrop') {
+        closeConfirmDialog();
+      }
+    });
+
+    // Klik Hapus (Clear Chat)
+    confirmOverlay.querySelector('#btn-confirm-execute-clear')?.addEventListener('click', () => {
+      closeConfirmDialog();
+      if (messagesContainer) {
+        messagesContainer.innerHTML = `
+          <div class="py-1 text-center animate-in fade-in duration-150">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-[#71717A] dark:text-[#A1A1AA] border border-zinc-200/60 dark:border-zinc-700/60">
+              <i data-lucide="trash-2" class="w-3 h-3 text-rose-500"></i>
+              Riwayat percakapan dibersihkan
+            </span>
+          </div>
+          ${getWelcomeMessageHtml()}
+        `;
+        renderIcons(messagesContainer);
+        scrollToBottom();
+      }
+    });
   });
 
   // Close handlers
@@ -2724,6 +2773,11 @@ export function openChatAiModal(options = {}) {
 
   const handleEsc = (e) => {
     if (e.key === 'Escape') {
+      const existingConfirm = root.querySelector('#clear-chat-confirm-backdrop');
+      if (existingConfirm) {
+        existingConfirm.remove();
+        return;
+      }
       handleClose();
     }
   };
